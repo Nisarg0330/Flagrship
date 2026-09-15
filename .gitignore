@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+
+# Environment files (NEVER commit secrets)
+.env
+.env.local
+.env.production
+
+# Prisma
+packages/api/prisma/migrations/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Test coverage
+coverage/
+
+# Extracted source docs (regenerable; originals live outside the repo)
+_docs/

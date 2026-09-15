@@ -1,0 +1,34 @@
+{
+  "name": "@flagrship/api",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Flagrship API — flag management, evaluation, and real-time sync",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx --env-file=.env prisma/seed.ts",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "fastify": "^5.0.0",
+    "@fastify/cors": "^10.0.0",
+    "@prisma/client": "^6.0.0",
+    "zod": "^3.23.0",
+    "ioredis": "^5.4.0",
+    "pino": "^9.0.0",
+    "murmurhash-js": "^1.0.0"
+  },
+  "devDependencies": {
+    "prisma": "^6.0.0",
+    "typescript": "^5.5.0",
+    "tsx": "^4.0.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^22.0.0"
+  }
+}

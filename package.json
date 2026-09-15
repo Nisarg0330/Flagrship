@@ -1,0 +1,26 @@
+{
+  "name": "flagrship",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Ship without a release. Roll out by percentage. Roll back instantly.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace=@flagrship/api",
+    "build:api": "npm run build --workspace=@flagrship/api",
+    "test:api": "npm run test --workspace=@flagrship/api",
+    "lint": "eslint packages/*/src --ext .ts",
+    "typecheck": "tsc --noEmit --project packages/api/tsconfig.json"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "allowScripts": {
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.21.5": true,
+    "prisma@6.19.3": true
+  }
+}

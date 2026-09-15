@@ -1,0 +1,207 @@
+// ─────────────────────────────────────────────────────
+// Flagrship Database Schema
+// ─────────────────────────────────────────────────────
+// This file is the source of truth for the database.
+// Run `npx prisma migrate dev` to apply changes.
+// Run `npx prisma generate` to update the client.
+// ─────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ORGANIZATION ───
+// Every Flagrship account is an organization.
+// Flags, environments, users, and API keys all belong to one org.
+model Organization {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(100)
+  slug      String   @unique @db.VarChar(60)
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations — an org "has many" of each
+  users        User[]
+  environments Environment[]
+  flags        Flag[]
+  apiKeys      ApiKey[]
+  auditLogs    AuditLog[]
+
+  @@map("organizations") // table name in PostgreSQL
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ─── USER ───
+// A team member within an organization.
+// Role determines what they can do (viewer < editor < admin).
+model User {
+  id             String    @id @default(uuid())
+  orgId          String    @map("org_id")
+  email          String    @db.VarChar(255)
+  name           String    @db.VarChar(100)
+  role           Role      @default(VIEWER)
+  authProvider   String    @default("email") @map("auth_provider") @db.VarChar(20)
+  authProviderId String?   @map("auth_provider_id") @db.VarChar(255)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  lastLoginAt    DateTime? @map("last_login_at")
+
+  // Relations
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  apiKeys   ApiKey[]     @relation("CreatedByUser")
+  auditLogs AuditLog[]
+  flags     Flag[]       @relation("CreatedByUser")
+
+  @@unique([orgId, email]) // same email can't be in the same org twice
+  @@map("users")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+// ─── ENVIRONMENT ───
+// Isolated namespace for flags: production, staging, development.
+// Each environment has its own API keys and flag configs.
+// Why? You don't want a staging toggle to affect production.
+model Environment {
+  id        String   @id @default(uuid())
+  orgId     String   @map("org_id")
+  name      String   @db.VarChar(40)
+  slug      String   @db.VarChar(40)
+  color     String?  @db.VarChar(7) // hex color for UI badges
+  sortOrder Int      @default(0) @map("sort_order")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  org         Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  flagConfigs FlagConfig[]
+  apiKeys     ApiKey[]
+  auditLogs   AuditLog[]
+
+  @@unique([orgId, slug]) // "production" can only exist once per org
+  @@map("environments")
+}
+
+// ─── API KEY ───
+// Authentication token for the API.
+// Scoped to one environment. Has permission scopes (read/write/admin).
+// The raw key is shown ONCE at creation. We only store the hash.
+model ApiKey {
+  id         String    @id @default(uuid())
+  orgId      String    @map("org_id")
+  envId      String    @map("env_id")
+  name       String    @db.VarChar(100)
+  keyPrefix  String    @map("key_prefix") @db.VarChar(12) // first 8 chars for identification
+  keyHash    String    @unique @map("key_hash") @db.VarChar(64) // SHA-256 hash
+  scopes     String[]  // ["read"], ["read","write"], ["read","write","admin"]
+  createdBy  String    @map("created_by")
+  expiresAt  DateTime? @map("expires_at")
+  revokedAt  DateTime? @map("revoked_at")
+  lastUsedAt DateTime? @map("last_used_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  org     Organization @relation(fields: [orgId], references: [id])
+  env     Environment  @relation(fields: [envId], references: [id])
+  creator User         @relation("CreatedByUser", fields: [createdBy], references: [id])
+
+  @@map("api_keys")
+}
+
+// ─── FLAG ───
+// The feature flag itself. Identified by a unique key (slug).
+// A flag exists once per org. Its per-environment state lives in FlagConfig.
+// Why separate? Because "new-checkout" might be enabled in staging
+// but disabled in production — same flag, different config per env.
+model Flag {
+  id          String    @id @default(uuid())
+  orgId       String    @map("org_id")
+  key         String    @db.VarChar(120) // the slug: "new-checkout-flow"
+  name        String    @db.VarChar(200) // display: "New Checkout Flow"
+  description String?   @db.Text
+  flagType    FlagType  @default(BOOLEAN) @map("flag_type")
+  archivedAt  DateTime? @map("archived_at") // soft delete
+  createdBy   String    @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  org         Organization @relation(fields: [orgId], references: [id])
+  creator     User         @relation("CreatedByUser", fields: [createdBy], references: [id])
+  flagConfigs FlagConfig[]
+  auditLogs   AuditLog[]
+
+  @@unique([orgId, key]) // "new-checkout" can only exist once per org
+  @@map("flags")
+}
+
+enum FlagType {
+  BOOLEAN
+  MULTIVARIATE
+}
+
+// ─── FLAG CONFIG ───
+// Per-environment state for a flag.
+// This is where enabled/disabled, rollout percentage, and targeting rules live.
+// One row per flag per environment.
+model FlagConfig {
+  id                String   @id @default(uuid())
+  flagId            String   @map("flag_id")
+  envId             String   @map("env_id")
+  enabled           Boolean  @default(false)
+  rolloutPercentage Int      @default(0) @map("rollout_percentage") @db.SmallInt
+  targetingRules    Json?    @map("targeting_rules") // JSONB array of rule objects
+  locked            Boolean  @default(false)
+  lockReason        String?  @map("lock_reason") @db.Text
+  lockedBy          String?  @map("locked_by")
+  lockedAt          DateTime? @map("locked_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  flag Flag        @relation(fields: [flagId], references: [id], onDelete: Cascade)
+  env  Environment @relation(fields: [envId], references: [id])
+
+  @@unique([flagId, envId]) // one config per flag per environment
+  @@map("flag_configs")
+}
+
+// ─── AUDIT LOG ───
+// Immutable record of every flag change.
+// WHO did WHAT, WHEN, and what was the state BEFORE and AFTER.
+// This is append-only — no updates, no deletes. Ever.
+model AuditLog {
+  id          String   @id @default(uuid())
+  orgId       String   @map("org_id")
+  flagId      String?  @map("flag_id") // null for org-level events
+  envId       String?  @map("env_id")
+  actorId     String   @map("actor_id")
+  actorType   String   @default("user") @map("actor_type") @db.VarChar(20) // user, api_key, system
+  action      String   @db.VarChar(40) // flag.created, flag.enabled, flag.rollout, etc.
+  beforeState Json?    @map("before_state") // snapshot before the change
+  afterState  Json?    @map("after_state")  // snapshot after the change
+  metadata    Json?    // IP address, user agent, CLI version
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  org   Organization @relation(fields: [orgId], references: [id])
+  flag  Flag?        @relation(fields: [flagId], references: [id])
+  env   Environment? @relation(fields: [envId], references: [id])
+  actor User         @relation(fields: [actorId], references: [id])
+
+  @@index([orgId, createdAt(sort: Desc)]) // org timeline queries
+  @@index([flagId, createdAt(sort: Desc)]) // per-flag history
+  @@map("audit_logs")
+}
