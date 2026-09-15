@@ -5,6 +5,7 @@ import { prisma } from './lib/db';
 import { ApiError } from './lib/errors';
 import { authenticate } from './middleware/auth';
 import { flagRoutes } from './routes/flags';
+import { keyRoutes } from './routes/keys';
 
 export function buildServer(): FastifyInstance {
   const app = Fastify({
@@ -69,6 +70,7 @@ export function buildServer(): FastifyInstance {
     async (api) => {
       api.addHook('onRequest', authenticate);
       await api.register(flagRoutes);
+      await api.register(keyRoutes);
     },
     { prefix: '/api/v1' },
   );

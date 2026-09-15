@@ -92,3 +92,30 @@ export async function authenticate(req: FastifyRequest): Promise<void> {
     .update({ where: { id: key.id }, data: { lastUsedAt: new Date() } })
     .catch((err) => req.log.warn({ err }, 'failed to record api key last_used_at'));
 }
+
+/**
+ * Route-level authorization, attached as a `preHandler`. The global `authenticate`
+ * hook derives the required scope from the HTTP method, which cannot express
+ * "this POST needs admin" — so admin-only routes carry this as well.
+ *
+ *   app.post('/flags/:key/lock', { preHandler: requireScope('admin') }, handler)
+ */
+export const requireScope = (scope: 'write' | 'admin') =>
+  async function enforceScope(req: FastifyRequest): Promise<void> {
+    if (!req.auth.scopes.includes(scope)) {
+      throw forbidden(
+        `API key ${req.auth.keyPrefix}… has scopes [${req.auth.scopes.join(', ')}] but this endpoint requires "${scope}".`,
+      );
+    }
+  };
+
+/**
+ * Scopes are hierarchical: admin implies write, write implies read. Normalizing on
+ * the way in means every check downstream is a plain `includes()` — no key can be
+ * stored as admin-without-read and then fail a GET it should have passed.
+ */
+export function normalizeScopes(requested: string[]): string[] {
+  if (requested.includes('admin')) return ['read', 'write', 'admin'];
+  if (requested.includes('write')) return ['read', 'write'];
+  return ['read'];
+}

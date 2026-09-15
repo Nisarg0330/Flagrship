@@ -3,6 +3,7 @@ import type { Flag, FlagConfig } from '@prisma/client';
 import { z } from 'zod';
 import { prisma } from '../lib/db';
 import { badRequest, conflict, notFound, parse } from '../lib/errors';
+import { requireScope } from '../middleware/auth';
 
 // TRD §11.2. Lowercase, alphanumeric, hyphens; must start and end alphanumeric.
 const FLAG_KEY = /^[a-z0-9][a-z0-9-]{1,118}[a-z0-9]$/;
@@ -29,13 +30,29 @@ const rolloutBody = z.object({
 
 const listQuery = z.object({ search: z.string().trim().min(1).max(200).optional() });
 
-type ConfigPatch = { enabled?: boolean; rolloutPercentage?: number };
+const lockBody = z.object({
+  reason: z.string().trim().min(1, 'A lock reason is required.').max(500),
+});
+
+type ConfigPatch = Partial<
+  Pick<FlagConfig, 'enabled' | 'rolloutPercentage' | 'locked' | 'lockReason' | 'lockedBy' | 'lockedAt'>
+>;
+
+/**
+ * The actions rollback can undo. Lock and unlock are deliberate admin decisions,
+ * not rollout changes - an undo must never silently re-lock a flag that someone
+ * chose to unlock.
+ */
+const UNDOABLE = ['flag.enabled', 'flag.disabled', 'flag.rollout', 'flag.rollback'];
 
 /** What an audit entry records. Only the fields a rollback could ever need to restore. */
-const snapshot = (c: Pick<FlagConfig, 'enabled' | 'rolloutPercentage' | 'locked'>) => ({
+const snapshot = (
+  c: Pick<FlagConfig, 'enabled' | 'rolloutPercentage' | 'locked' | 'lockReason'>,
+) => ({
   enabled: c.enabled,
   rolloutPercentage: c.rolloutPercentage,
   locked: c.locked,
+  lockReason: c.lockReason,
 });
 
 const auditMetadata = (req: FastifyRequest) => ({
@@ -83,6 +100,7 @@ async function mutateConfig(
   key: string,
   action: string,
   next: (current: FlagConfig) => ConfigPatch,
+  options: { allowLocked?: boolean } = {},
 ) {
   const { orgId, envId, envSlug, actorId } = req.auth;
 
@@ -92,10 +110,9 @@ async function mutateConfig(
     throw notFound(`Flag "${key}" has no configuration in the "${envSlug}" environment.`);
   }
 
-  // ponytail: read-then-write, so two simultaneous requests could both pass this
-  // check. Harmless while nothing can set `locked` (the lock endpoints land in
-  // week 3) - move the guard into the update's WHERE clause when they do.
-  if (current.locked) {
+  // Fast path, purely for the error message: this is the only place that knows
+  // the lock reason. The real enforcement is the WHERE clause below.
+  if (current.locked && !options.allowLocked) {
     throw conflict(
       `Flag "${key}" is locked: ${current.lockReason ?? 'no reason recorded'}. An admin must unlock it first.`,
     );
@@ -103,9 +120,22 @@ async function mutateConfig(
 
   const patch = next(current);
 
-  const [config] = await prisma.$transaction([
-    prisma.flagConfig.update({ where: { id: current.id }, data: patch }),
-    prisma.auditLog.create({
+  const config = await prisma.$transaction(async (tx) => {
+    // `locked: false` in the WHERE makes the check and the write one atomic
+    // statement, so a lock landing between the read above and this update cannot
+    // slip through. Unlock is the one mutation allowed to target a locked row.
+    const { count } = await tx.flagConfig.updateMany({
+      where: { id: current.id, ...(options.allowLocked ? {} : { locked: false }) },
+      data: patch,
+    });
+
+    if (count === 0) {
+      // Throwing inside an interactive transaction rolls it back, so no audit row
+      // is left behind describing a change that never happened.
+      throw conflict(`Flag "${key}" was locked by someone else before this change landed.`);
+    }
+
+    await tx.auditLog.create({
       data: {
         orgId,
         envId,
@@ -117,8 +147,10 @@ async function mutateConfig(
         afterState: snapshot({ ...current, ...patch }),
         metadata: auditMetadata(req),
       },
-    }),
-  ]);
+    });
+
+    return tx.flagConfig.findUniqueOrThrow({ where: { id: current.id } });
+  });
 
   return serialize({ ...flag, flagConfigs: [config] }, envSlug);
 }
@@ -237,6 +269,80 @@ export async function flagRoutes(app: FastifyInstance) {
       }
       return { rolloutPercentage: percentage };
     });
+  });
+
+  app.post('/flags/:key/rollback', async (req) => {
+    const { key } = req.params as { key: string };
+    const { orgId, envId, envSlug } = req.auth;
+
+    const flag = await findFlagOrThrow(orgId, envId, key);
+
+    // Undo, not "restore a known-good state": this takes the most recent change
+    // in this environment and puts back what was there before it. A second
+    // rollback therefore undoes the first. One rule, no special cases.
+    const previous = await prisma.auditLog.findFirst({
+      where: { flagId: flag.id, envId, action: { in: UNDOABLE } },
+      orderBy: { createdAt: 'desc' },
+      select: { action: true, beforeState: true },
+    });
+
+    if (!previous?.beforeState) {
+      throw conflict(
+        `Flag "${key}" has not been changed in "${envSlug}" yet, so there is nothing to roll back.`,
+      );
+    }
+
+    const before = previous.beforeState as { enabled: boolean; rolloutPercentage: number };
+
+    return mutateConfig(req, key, 'flag.rollback', () => ({
+      enabled: before.enabled,
+      rolloutPercentage: before.rolloutPercentage,
+    }));
+  });
+
+  app.post('/flags/:key/lock', { preHandler: requireScope('admin') }, async (req) => {
+    const { key } = req.params as { key: string };
+    const { reason } = parse(lockBody, req.body);
+
+    return mutateConfig(
+      req,
+      key,
+      'flag.locked',
+      (current) => {
+        if (current.locked) {
+          throw conflict(
+            `Flag "${key}" is already locked: ${current.lockReason ?? 'no reason recorded'}.`,
+          );
+        }
+        return {
+          locked: true,
+          lockReason: reason,
+          lockedBy: req.auth.actorId,
+          lockedAt: new Date(),
+        };
+      },
+      // Lock and unlock are the two operations that legitimately target lock
+      // state, so they skip the generic guard and raise their own errors - an
+      // admin locking an already-locked flag should be told it is already
+      // locked, not that an admin must unlock it first.
+      { allowLocked: true },
+    );
+  });
+
+  app.post('/flags/:key/unlock', { preHandler: requireScope('admin') }, async (req) => {
+    const { key } = req.params as { key: string };
+
+    return mutateConfig(
+      req,
+      key,
+      'flag.unlocked',
+      (current) => {
+        if (!current.locked) throw conflict(`Flag "${key}" is not locked.`);
+        return { locked: false, lockReason: null, lockedBy: null, lockedAt: null };
+      },
+      // See the note on lock above.
+      { allowLocked: true },
+    );
   });
 
   app.get('/flags/:key/history', async (req) => {
