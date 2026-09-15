@@ -263,3 +263,27 @@ describe('flag lifecycle', () => {
     expect(audits).toBe(4);
   });
 });
+
+describe('request body parsing', () => {
+  it('accepts a body-less POST that still carries a JSON content-type', async () => {
+    // Most HTTP clients send Content-Type: application/json on every POST.
+    // Fastify's default parser 400s on that with an empty body; ours does not.
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/flags/new-checkout/enable',
+      headers: { ...auth(writeKey), 'content-type': 'application/json' },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('still rejects malformed JSON with a 400', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/flags/new-checkout/rollout',
+      headers: { ...auth(writeKey), 'content-type': 'application/json' },
+      payload: '{ not json',
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+  });
+});

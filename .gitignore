@@ -30,3 +30,4 @@ coverage/
 
 # Extracted source docs (regenerable; originals live outside the repo)
 _docs/
+.gstack/

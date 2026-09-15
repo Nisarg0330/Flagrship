@@ -345,6 +345,47 @@ export async function flagRoutes(app: FastifyInstance) {
     );
   });
 
+  app.delete('/flags/:key', { preHandler: requireScope('admin') }, async (req) => {
+    const { key } = req.params as { key: string };
+    const { orgId, actorId } = req.auth;
+
+    const flag = await prisma.flag.findFirst({
+      where: { orgId, key, archivedAt: null },
+      include: { flagConfigs: { where: { locked: true }, include: { env: true } } },
+    });
+    if (!flag) throw notFound(`Flag "${key}" does not exist.`);
+
+    // Archiving evaluates the flag to false everywhere, which is exactly what a
+    // lock exists to prevent. A lock in any environment blocks it.
+    const locked = flag.flagConfigs[0];
+    if (locked) {
+      throw conflict(
+        `Flag "${key}" is locked in "${locked.env.slug}": ${locked.lockReason ?? 'no reason recorded'}. Unlock it before archiving.`,
+      );
+    }
+
+    // Soft delete. Audit rows and configs stay; list and /evaluate already
+    // filter on archivedAt so the flag disappears from both immediately.
+    await prisma.$transaction([
+      prisma.flag.update({ where: { id: flag.id }, data: { archivedAt: new Date() } }),
+      prisma.auditLog.create({
+        data: {
+          orgId,
+          flagId: flag.id,
+          envId: null, // archive spans every environment, like create
+          actorId,
+          actorType: 'api_key',
+          action: 'flag.archived',
+          beforeState: { archived: false },
+          afterState: { archived: true },
+          metadata: auditMetadata(req),
+        },
+      }),
+    ]);
+
+    return { key: flag.key, archived: true };
+  });
+
   app.get('/flags/:key/history', async (req) => {
     const { key } = req.params as { key: string };
     const flag = await findFlagOrThrow(req.auth.orgId, req.auth.envId, key);

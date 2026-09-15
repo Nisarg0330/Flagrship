@@ -257,3 +257,92 @@ describe('api keys', () => {
     ]);
   });
 });
+
+describe('evaluate', () => {
+  it('returns every active flag with only the fields the SDK needs', async () => {
+    const res = await get('/evaluate', writeKey);
+    expect(res.statusCode).toBe(200);
+
+    const body = res.json();
+    expect(body.environment).toBe('production');
+    expect(body.flags).toHaveLength(1);
+    expect(Object.keys(body.flags[0]).sort()).toEqual([
+      'enabled',
+      'key',
+      'rolloutPercentage',
+      'targetingRules',
+    ]);
+    expect(res.headers.etag).toMatch(/^"[A-Za-z0-9_-]{27}"$/);
+  });
+
+  it('answers 304 to a matching If-None-Match', async () => {
+    const first = await get('/evaluate', writeKey);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/evaluate',
+      headers: { ...auth(writeKey), 'if-none-match': first.headers.etag as string },
+    });
+    expect(res.statusCode).toBe(304);
+    expect(res.body).toBe('');
+  });
+
+  it('changes the ETag when a flag changes', async () => {
+    const before = await get('/evaluate', writeKey);
+    await post(`/flags/${FLAG}/rollout`, writeKey, { percentage: 77 });
+    const after = await get('/evaluate', writeKey);
+    expect(after.headers.etag).not.toBe(before.headers.etag);
+    expect(after.json().flags[0].rolloutPercentage).toBe(77);
+  });
+
+  it('has no way to pass a user identifier', async () => {
+    // The route ignores query parameters entirely - the payload is identical
+    // with or without them. This is PRD §11.1 as a test, not a comment.
+    const plain = await get('/evaluate', writeKey);
+    const withUser = await get('/evaluate?userId=alice&context=x', writeKey);
+    expect(withUser.body).toBe(plain.body);
+  });
+});
+
+describe('archive', () => {
+  it('refuses archive from a non-admin key', async () => {
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/flags/${FLAG}`,
+      headers: auth(writeKey),
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('refuses to archive a flag that is locked in any environment', async () => {
+    await post(`/flags/${FLAG}/lock`, adminKey, { reason: 'do not touch' });
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/flags/${FLAG}`,
+      headers: auth(adminKey),
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.message).toMatch(/locked in "production"/);
+    await post(`/flags/${FLAG}/unlock`, adminKey);
+  });
+
+  it('archives, and the flag vanishes from list and evaluate', async () => {
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/flags/${FLAG}`,
+      headers: auth(adminKey),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ key: FLAG, archived: true });
+
+    expect((await get('/flags', writeKey)).json().flags).toHaveLength(0);
+    expect((await get('/evaluate', writeKey)).json().flags).toHaveLength(0);
+    expect((await get(`/flags/${FLAG}`, writeKey)).statusCode).toBe(404);
+  });
+
+  it('is audited as an org-level event', async () => {
+    const entry = await prisma.auditLog.findFirst({
+      where: { orgId, action: 'flag.archived' },
+    });
+    expect(entry).toMatchObject({ envId: null, afterState: { archived: true } });
+  });
+});

@@ -1,0 +1,37 @@
+{
+  "name": "@flagrship/sdk",
+  "version": "0.0.1",
+  "description": "Flagrship SDK — evaluate feature flags in-process, no network call per check",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --platform=neutral --target=es2022 --format=cjs --outfile=dist/index.js && esbuild src/index.ts --bundle --platform=neutral --target=es2022 --format=esm --outfile=dist/index.mjs && tsc --emitDeclarationOnly",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "size": "node -e \"const z=require('zlib'),f=require('fs');const b=f.readFileSync('dist/index.mjs');console.log('dist/index.mjs', b.length, 'bytes,', z.gzipSync(b).length, 'gzipped')\""
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5",
+    "typescript": "^5.5.0",
+    "tsx": "^4.0.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^22.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

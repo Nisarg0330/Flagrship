@@ -9,9 +9,14 @@
   "scripts": {
     "dev:api": "npm run dev --workspace=@flagrship/api",
     "build:api": "npm run build --workspace=@flagrship/api",
+    "build:cli": "npm run build --workspace=@flagrship/cli",
+    "build:sdk": "npm run build --workspace=@flagrship/sdk",
+    "test": "npm run test:api && npm run test:cli && npm run test:sdk",
     "test:api": "npm run test --workspace=@flagrship/api",
+    "test:cli": "npm run test --workspace=@flagrship/cli",
+    "test:sdk": "npm run test --workspace=@flagrship/sdk",
     "lint": "eslint packages/*/src --ext .ts",
-    "typecheck": "tsc --noEmit --project packages/api/tsconfig.json"
+    "typecheck": "tsc --noEmit -p packages/api/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json && tsc --noEmit -p packages/sdk-js/tsconfig.json"
   },
   "engines": {
     "node": ">=18.0.0"

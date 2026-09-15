@@ -50,20 +50,19 @@ async function main() {
       continue;
     }
 
-    // Production gets a live key, everything else a test key. Both carry
-    // read+write; admin scope is minted deliberately, never by a seed script.
-    const { raw, keyPrefix, keyHash } = generateApiKey(
-      env.slug === 'production' ? 'sk_live_' : 'sk_test_',
-    );
+    // Seeded keys are admin-scoped: this script bootstraps a developer's own
+    // local database, and POST /keys needs admin to mint anything narrower. A
+    // seed that only issues read+write leaves no way in without a manual insert.
+    const { raw, keyPrefix, keyHash } = generateApiKey('sk_admin_');
 
     await prisma.apiKey.create({
       data: {
         orgId: org.id,
         envId: env.id,
-        name: `${definition.name} default key`,
+        name: `${definition.name} admin key`,
         keyPrefix,
         keyHash,
-        scopes: ['read', 'write'],
+        scopes: ['read', 'write', 'admin'],
         createdBy: admin.id,
       },
     });

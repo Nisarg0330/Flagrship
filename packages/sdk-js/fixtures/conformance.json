@@ -1,0 +1,185 @@
+{
+  "$comment": "Cross-SDK conformance suite. Every SDK, in every language, must pass every case. The hash contract: MurmurHash3 x86_32, seed 0, over the UTF-8 bytes of `${flagKey}:${userId}`; bucket = hash % 100; ON when bucket < rolloutPercentage. None of that can ever change - it would re-bucket every user of every customer. Expected buckets were computed by the JS SDK after it passed the published MurmurHash3 reference vectors.",
+  "version": 1,
+  "hashVectors": [
+    { "input": "", "seed": 0, "expected": 0 },
+    { "input": "a", "seed": 0, "expected": 1009084850 },
+    { "input": "hello", "seed": 0, "expected": 613153351 },
+    { "input": "hello, world", "seed": 0, "expected": 345750399 },
+    { "input": "The quick brown fox jumps over the lazy dog", "seed": 0, "expected": 776992547 },
+    { "input": "abc", "seed": 0, "expected": 3017643002 },
+    { "input": "abcd", "seed": 0, "expected": 1139631978 },
+    { "input": "é", "seed": 0, "expected": 269551495, "$comment": "2 UTF-8 bytes [C3 A9]. A UTF-16 implementation produces 1153881266 - wrong." }
+  ],
+  "buckets": [
+    { "flagKey": "new-checkout", "userId": "user-29", "expected": 0 },
+    { "flagKey": "new-checkout", "userId": "user-76", "expected": 1 },
+    { "flagKey": "new-checkout", "userId": "user-53", "expected": 49 },
+    { "flagKey": "new-checkout", "userId": "user-8", "expected": 50 },
+    { "flagKey": "new-checkout", "userId": "user-242", "expected": 98 },
+    { "flagKey": "new-checkout", "userId": "user-119", "expected": 99 },
+    { "flagKey": "new-checkout", "userId": "alice", "expected": 40 },
+    { "flagKey": "new-checkout", "userId": "bob", "expected": 88 },
+    { "flagKey": "new-checkout", "userId": "carol", "expected": 1 },
+    { "flagKey": "new-checkout", "userId": "42", "expected": 73 },
+    { "flagKey": "new-checkout", "userId": "a0f3c9d2-1b6e-4f8a-9c3d-7e2b5a1f6d4c", "expected": 52 },
+    { "flagKey": "new-checkout", "userId": "ユーザー", "expected": 83 },
+    { "flagKey": "dark-mode", "userId": "alice", "expected": 95, "$comment": "same user, different flag, different bucket" },
+    { "flagKey": "dark-mode", "userId": "bob", "expected": 20 },
+    { "flagKey": "dark-mode", "userId": "ユーザー", "expected": 38 }
+  ],
+  "evaluations": [
+    {
+      "name": "missing flag returns the default: false",
+      "flags": [],
+      "flagKey": "nope", "userId": "alice", "default": null,
+      "expected": false
+    },
+    {
+      "name": "missing flag returns the supplied default: true",
+      "flags": [],
+      "flagKey": "nope", "userId": "alice", "default": true,
+      "expected": true
+    },
+    {
+      "name": "disabled flag is false even at 100%",
+      "flags": [{ "key": "new-checkout", "enabled": false, "rolloutPercentage": 100, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "alice", "default": null,
+      "expected": false
+    },
+    {
+      "name": "disabled flag ignores a true default",
+      "flags": [{ "key": "new-checkout", "enabled": false, "rolloutPercentage": 100, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "alice", "default": true,
+      "expected": false
+    },
+    {
+      "name": "enabled at 0% is false for everyone",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 0, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "user-29", "default": null,
+      "expected": false,
+      "$comment": "user-29 is bucket 0; 0 < 0 is false"
+    },
+    {
+      "name": "enabled at 100% is true for everyone",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 100, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "user-119", "default": null,
+      "expected": true,
+      "$comment": "user-119 is bucket 99; 99 < 100"
+    },
+    {
+      "name": "100% needs no user id",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 100, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": null, "default": null,
+      "expected": true
+    },
+    {
+      "name": "below 100% with no user id is false - cannot bucket without an identifier",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 99, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": null, "default": null,
+      "expected": false
+    },
+    {
+      "name": "below 100% with empty user id is false",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 99, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "", "default": null,
+      "expected": false
+    },
+    {
+      "name": "1%: bucket 0 is in",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 1, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "user-29", "default": null,
+      "expected": true
+    },
+    {
+      "name": "1%: bucket 1 is out",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 1, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "user-76", "default": null,
+      "expected": false
+    },
+    {
+      "name": "50%: bucket 49 is in",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 50, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "user-53", "default": null,
+      "expected": true
+    },
+    {
+      "name": "50%: bucket 50 is out",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 50, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "user-8", "default": null,
+      "expected": false
+    },
+    {
+      "name": "99%: bucket 98 is in",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 99, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "user-242", "default": null,
+      "expected": true
+    },
+    {
+      "name": "99%: bucket 99 is out",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 99, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "user-119", "default": null,
+      "expected": false
+    },
+    {
+      "name": "cohort is sticky: alice (40) is in at 41%",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 41, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "alice", "default": null,
+      "expected": true
+    },
+    {
+      "name": "cohort is sticky: alice (40) is still in at 75%",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 75, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "alice", "default": null,
+      "expected": true,
+      "$comment": "increasing rollout never removes a user who was already in"
+    },
+    {
+      "name": "cohort is sticky: alice (40) is out at 40%",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 40, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "alice", "default": null,
+      "expected": false
+    },
+    {
+      "name": "same user, different flag: alice is out of dark-mode at 75% (bucket 95)",
+      "flags": [{ "key": "dark-mode", "enabled": true, "rolloutPercentage": 75, "targetingRules": null }],
+      "flagKey": "dark-mode", "userId": "alice", "default": null,
+      "expected": false
+    },
+    {
+      "name": "unicode user id buckets deterministically (83)",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 84, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "ユーザー", "default": null,
+      "expected": true
+    },
+    {
+      "name": "unicode user id: out at 83%",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 83, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "ユーザー", "default": null,
+      "expected": false
+    },
+    {
+      "name": "targeting rules present are ignored until Phase 4",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 0, "targetingRules": [{ "id": "r1", "conditions": [], "result": { "enabled": true } }] }],
+      "flagKey": "new-checkout", "userId": "alice", "default": null,
+      "expected": false,
+      "$comment": "when rule evaluation lands, this case flips to true and the version bumps to 2"
+    },
+    {
+      "name": "multiple flags: lookup is by exact key",
+      "flags": [
+        { "key": "new-checkout", "enabled": true, "rolloutPercentage": 100, "targetingRules": null },
+        { "key": "new-checkout-v2", "enabled": false, "rolloutPercentage": 0, "targetingRules": null }
+      ],
+      "flagKey": "new-checkout-v2", "userId": "alice", "default": null,
+      "expected": false
+    },
+    {
+      "name": "user id is case-sensitive",
+      "flags": [{ "key": "new-checkout", "enabled": true, "rolloutPercentage": 41, "targetingRules": null }],
+      "flagKey": "new-checkout", "userId": "Alice", "default": null,
+      "expected": false,
+      "$comment": "Alice != alice; different bytes, different bucket. Pinned by running it - if this flips, the hash input changed."
+    }
+  ]
+}

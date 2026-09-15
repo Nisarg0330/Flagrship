@@ -4,6 +4,7 @@ import cors from '@fastify/cors';
 import { prisma } from './lib/db';
 import { ApiError } from './lib/errors';
 import { authenticate } from './middleware/auth';
+import { evaluateRoutes } from './routes/evaluate';
 import { flagRoutes } from './routes/flags';
 import { keyRoutes } from './routes/keys';
 
@@ -53,6 +54,22 @@ export function buildServer(): FastifyInstance {
     }),
   );
 
+  // Fastify's default JSON parser rejects an empty body when Content-Type is
+  // application/json. Most HTTP clients send that header on every POST whether
+  // or not there is a body, so `POST /flags/:key/enable` would 400 for them.
+  // Treat empty as "no body" - the routes that need one validate with Zod.
+  app.removeContentTypeParser('application/json');
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
+    if (body === '' || body === undefined) return done(null, undefined);
+    try {
+      done(null, JSON.parse(body as string));
+    } catch (err) {
+      const e = err as Error & { statusCode?: number };
+      e.statusCode = 400;
+      done(e, undefined);
+    }
+  });
+
   app.register(cors, { origin: false });
 
   // Public: the load balancer health check cannot carry an API key.
@@ -71,6 +88,7 @@ export function buildServer(): FastifyInstance {
       api.addHook('onRequest', authenticate);
       await api.register(flagRoutes);
       await api.register(keyRoutes);
+      await api.register(evaluateRoutes);
     },
     { prefix: '/api/v1' },
   );
