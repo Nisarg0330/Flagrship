@@ -1,0 +1,91 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist), "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), "Lyon Text", Georgia, serif;
+  --font-mono: var(--font-geist-mono), "SF Mono", ui-monospace, Menlo, monospace;
+}
+
+@theme {
+  --color-canvas: #f7f6f3;
+  --color-surface: #ffffff;
+  --color-surface-2: #f9f9f8;
+  --color-line: #eaeaea;
+  --color-ink: #111111;
+  --color-ink-2: #2f3437;
+  --color-muted: #787774;
+  --color-muted-2: #a8a6a1;
+
+  --color-mint-100: #edf3ec;
+  --color-mint-700: #346538;
+  --color-rose-100: #fdebec;
+  --color-rose-700: #9f2f2d;
+  --color-sky-100: #e1f3fe;
+  --color-sky-700: #1f6c9f;
+  --color-sand-100: #fbf3db;
+  --color-sand-700: #956400;
+
+  /* the one dark surface on the page: code windows */
+  --color-code: #1c1e2b;
+  --color-code-bar: #22243300;
+  --color-code-dot: #3b3e52;
+  --color-code-line: #565a75;
+  --color-code-fg: #d6d9e6;
+  --color-code-kw: #c4b5fd;
+  --color-code-str: #5eead4;
+  --color-code-fn: #7dd3fc;
+  --color-code-num: #fde68a;
+  --color-code-cmt: #6b7089;
+  --color-code-ok: #86efac;
+  --color-code-err: #fca5a5;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink-2);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  ::selection { background: var(--color-sand-100); }
+}
+
+@layer components {
+  .dots {
+    background-image: radial-gradient(circle, rgba(17, 17, 17, 0.07) 1px, transparent 1px);
+    background-size: 18px 18px;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.6s var(--ease-out-expo), transform 0.6s var(--ease-out-expo);
+    transition-delay: calc(var(--i, 0) * 80ms);
+  }
+  .reveal.in { opacity: 1; transform: none; }
+
+  .hairline {
+    background: linear-gradient(to bottom, transparent, var(--color-line) 30%, var(--color-line) 70%, transparent);
+  }
+
+  @keyframes drift {
+    from { transform: translate(0, 0); }
+    to { transform: translate(6vw, 4vw); }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .drift { animation: drift 28s ease-in-out infinite alternate; }
+  .drift-2 { animation: drift 34s ease-in-out infinite alternate-reverse; }
+  .float { animation: float 9s ease-in-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drift, .drift-2, .float { animation: none; }
+    .reveal { opacity: 1; transform: none; transition: none; }
+  }
+}
