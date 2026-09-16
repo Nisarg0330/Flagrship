@@ -10,8 +10,9 @@ variable "domain" {
 }
 
 variable "github_repo" {
-  type    = string
-  default = "Nisarg0330/Flagrship"
+  description = "owner@owner_id/name@repo_id. GitHub OIDC `sub` claims carry the numeric IDs, which survive renames; the trust policy pins them. Find yours: curl -s https://api.github.com/repos/OWNER/NAME | jq '{owner_id: .owner.id, repo_id: .id}'"
+  type        = string
+  default     = "Nisarg0330@85939030/Flagrship@1371654175"
 }
 
 variable "api_cname_target" {

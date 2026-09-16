@@ -20,9 +20,9 @@ variable "api_subdomain" {
 }
 
 variable "github_repo" {
-  description = "owner/name. GitHub Actions on this repo's main branch may push images and deploy."
+  description = "owner@owner_id/name@repo_id. GitHub OIDC `sub` claims carry the numeric IDs, which survive renames; the trust policy pins them. Find yours: curl -s https://api.github.com/repos/OWNER/NAME | jq '{owner_id: .owner.id, repo_id: .id}'"
   type        = string
-  default     = "Nisarg0330/Flagrship"
+  default     = "Nisarg0330@85939030/Flagrship@1371654175"
 }
 
 variable "alarm_email" {
