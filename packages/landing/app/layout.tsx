@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   title: 'Flagrship',
   description:
     'Feature flags for teams that ship often. Deploy dark, roll out by percentage, roll back in one command. CLI-first, with JavaScript and Python SDKs.',
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
