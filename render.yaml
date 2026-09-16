@@ -1,0 +1,29 @@
+# Render Blueprint for the API. Render → New → Blueprint → pick this repo.
+#
+# The database is NOT here on purpose: Render's free Postgres is deleted after
+# 30 days. Use Neon's free tier (no expiry) and paste its connection string as
+# DATABASE_URL when Render prompts for it. Append ?sslmode=require to Neon's URL.
+#
+# Free tier: the service sleeps after 15 idle minutes and takes ~30s to wake.
+# An SDK polling every 30s keeps it awake; the CLI may eat one cold start after
+# a quiet spell. Upgrade to Starter ($7/mo) when that matters.
+
+services:
+  - type: web
+    name: flagrship-api
+    runtime: docker
+    plan: free
+    region: ohio            # closest Render region to us-east-1 and to Neon's default
+    dockerfilePath: packages/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit   # every push to main redeploys; the Dockerfile runs migrations on boot
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        sync: false           # prompted at blueprint creation; never committed

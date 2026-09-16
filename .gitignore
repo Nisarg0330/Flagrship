@@ -43,3 +43,15 @@ next-env.d.ts
 # npm auth - never commit a token
 .npmrc
 **/.npmrc
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+.terraform.lock.hcl
+crash.log
+
+# Next.js static export
+packages/landing/out/

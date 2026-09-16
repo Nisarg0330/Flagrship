@@ -1,0 +1,85 @@
+name: Deploy API
+
+# Manual for now. Switch `on:` to push-to-main once a deploy has gone through
+# cleanly a few times and the rollback path has been seen to work.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-api
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: flagrship/api
+  ECS_CLUSTER: flagrship
+  ECS_SERVICE: api
+  CONTAINER_NAME: api
+
+permissions:
+  id-token: write # OIDC token for AWS; no stored key
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          IMAGE="$REGISTRY/$ECR_REPOSITORY:${GITHUB_SHA::12}"
+          docker build -f packages/api/Dockerfile -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      # A new task definition revision pointing at the immutable SHA tag. ECS's
+      # circuit breaker rolls back to the previous revision on a failed health
+      # check - which only means something if each revision pins a different
+      # image. Re-pulling :latest would roll back to the same broken build.
+      - name: Register task definition
+        id: taskdef
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_CLUSTER-$CONTAINER_NAME" \
+            --query 'taskDefinition' > current.json
+
+          jq --arg img "${{ steps.build.outputs.image }}" \
+             '.containerDefinitions[0].image = $img
+              | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                    .compatibilities, .registeredAt, .registeredBy)' \
+             current.json > new.json
+
+          ARN=$(aws ecs register-task-definition --cli-input-json file://new.json \
+                  --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "arn=$ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Roll the service
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.taskdef.outputs.arn }}" > /dev/null
+
+          echo "waiting for the service to stabilise (rollback happens here if the health check fails)"
+          aws ecs wait services-stable --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE"
+
+      - name: Verify
+        run: |
+          RUNNING=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+                      --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition' --output text)
+          echo "primary task definition: $RUNNING"
+          test "$RUNNING" = "${{ steps.taskdef.outputs.arn }}" || { echo "deploy was rolled back"; exit 1; }
+          curl -fsS https://api.flagrship.dev/health
