@@ -31,3 +31,9 @@ coverage/
 # Extracted source docs (regenerable; originals live outside the repo)
 _docs/
 .gstack/
+
+# Python
+__pycache__/
+.pytest_cache/
+*.egg-info/
+.venv/

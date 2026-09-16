@@ -96,7 +96,7 @@ describe('Gate A: create -> rollout -> SDK flips -> rollback', () => {
     const sdk = new Flagrship({ apiKey: readKey, apiUrl, pollInterval: 0 });
     await sdk.ready();
 
-    // From fixtures/conformance.json: user-53 is bucket 49, user-8 is bucket 50.
+    // From conformance/conformance.json: user-53 is bucket 49, user-8 is bucket 50.
     expect(sdk.isEnabled(FLAG, 'user-53')).toBe(true);
     expect(sdk.isEnabled(FLAG, 'user-8')).toBe(false);
     expect(sdk.isEnabled(FLAG, null)).toBe(false);

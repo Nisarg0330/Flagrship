@@ -11,10 +11,11 @@
     "build:api": "npm run build --workspace=@flagrship/api",
     "build:cli": "npm run build --workspace=@flagrship/cli",
     "build:sdk": "npm run build --workspace=@flagrship/sdk",
-    "test": "npm run test:api && npm run test:cli && npm run test:sdk",
+    "test": "npm run test:api && npm run test:cli && npm run test:sdk && npm run test:py",
     "test:api": "npm run test --workspace=@flagrship/api",
     "test:cli": "npm run test --workspace=@flagrship/cli",
     "test:sdk": "npm run test --workspace=@flagrship/sdk",
+    "test:py": "python -m pytest packages/sdk-python -q",
     "lint": "eslint packages/*/src --ext .ts",
     "typecheck": "tsc --noEmit -p packages/api/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json && tsc --noEmit -p packages/sdk-js/tsconfig.json"
   },

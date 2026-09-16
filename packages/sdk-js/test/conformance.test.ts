@@ -1,11 +1,11 @@
 /**
- * Runs fixtures/conformance.json. The Python SDK (week 8) runs the same file.
+ * Runs conformance/conformance.json at the repo root. The Python SDK runs the same file.
  * If a case fails here, fix the SDK, never the fixture - unless the hash
  * contract itself changed, which it must not.
  */
 import { describe, expect, it } from 'vitest';
 import { Flagrship, bucket, murmurhash3_x86_32, type FlagConfig } from '../src/index';
-import fixtures from '../fixtures/conformance.json';
+import fixtures from '../../../conformance/conformance.json';
 
 /** A Flagrship whose first sync returns exactly these flags, with polling off. */
 async function sdkWith(flags: FlagConfig[]): Promise<Flagrship> {

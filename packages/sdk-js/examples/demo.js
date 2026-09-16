@@ -21,7 +21,7 @@ if (!apiKey) {
 
 const flags = new Flagrship({
   apiKey,
-  apiUrl: process.env.FLAGRSHIP_API_URL ?? 'http://localhost:3000',
+  apiUrl: process.env.FLAGRSHIP_API_URL ?? 'http://127.0.0.1:3000',
   pollInterval: Number(process.env.FLAGRSHIP_POLL_MS ?? 2000),
   onUpdate: () => console.log('  ↻ config updated'),
   onError: (err) => console.log(`  ! ${err.message} (serving cached config)`),
