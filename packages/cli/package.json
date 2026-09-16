@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "pretest": "npm run build",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "commander": "^12.1.0"
@@ -29,5 +30,22 @@
   },
   "engines": {
     "node": ">=20.12.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nisarg0330/Flagrship.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/Nisarg0330/Flagrship",
+  "bugs": "https://github.com/Nisarg0330/Flagrship/issues",
+  "author": "Nisarg Patel",
+  "keywords": [
+    "feature-flags",
+    "cli",
+    "rollout",
+    "feature-toggle"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

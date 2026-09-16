@@ -39,3 +39,7 @@ __pycache__/
 # Next.js
 *.tsbuildinfo
 next-env.d.ts
+
+# npm auth - never commit a token
+.npmrc
+**/.npmrc
