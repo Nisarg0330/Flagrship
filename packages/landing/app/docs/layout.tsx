@@ -16,7 +16,7 @@ export default function DocsLayout({ children }: { children: React.ReactNode }) 
             <span className="hidden text-sm text-muted md:inline">Docs</span>
           </div>
           <div className="flex items-center gap-[18px] text-sm">
-            <a href="#" className="text-muted hover:text-ink">
+            <a href="https://github.com/Nisarg0330/Flagrship" className="text-muted hover:text-ink">
               GitHub
             </a>
             <Button href="/#pricing" size="sm">

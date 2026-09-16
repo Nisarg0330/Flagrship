@@ -469,7 +469,7 @@ export function Footer() {
         <div className="flex gap-7">
           {[
             ['Docs', '/docs'],
-            ['GitHub', '#'],
+            ['GitHub', 'https://github.com/Nisarg0330/Flagrship'],
             ['Status', '#'],
             ['Privacy', '#'],
             ['nisarg@flagrship.dev', 'mailto:nisarg@flagrship.dev'],

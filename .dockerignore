@@ -1,0 +1,26 @@
+# Build context is the repo root. The API image needs the api package plus every
+# workspace's package.json (npm ci validates the lockfile against all of them).
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/*.tsbuildinfo
+**/__pycache__
+**/.pytest_cache
+.git
+.github
+_docs
+*.md
+*.pdf
+conformance
+packages/api/.env
+packages/api/test
+packages/cli/**
+!packages/cli/package.json
+packages/sdk-js/**
+!packages/sdk-js/package.json
+packages/landing/**
+!packages/landing/package.json
+packages/sdk-python
+packages/dashboard
+packages/infra
