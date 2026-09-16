@@ -33,6 +33,19 @@ jobs:
       - run: npm ci
       - run: npm run build:landing
 
+      # What AWS will be shown. If the assume-role step fails, compare `sub`
+      # here against the role's trust policy - it is the only thing that can
+      # disagree. Prints claims only, never the token.
+      - name: OIDC claims
+        run: |
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2 | tr '_-' '/+')
+          echo "${PAYLOAD}==" | base64 -d 2>/dev/null | jq '{sub, aud, repository, ref, event_name}' || true
+          echo "role arn length: ${#AWS_SITE_DEPLOY_ROLE_ARN} (a bare ARN for this role is 59)"
+        env:
+          AWS_SITE_DEPLOY_ROLE_ARN: ${{ secrets.AWS_SITE_DEPLOY_ROLE_ARN }}
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_SITE_DEPLOY_ROLE_ARN }}

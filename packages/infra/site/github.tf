@@ -22,7 +22,9 @@ data "aws_iam_policy_document" "github_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo}:ref:refs/heads/main"]
+      # Any ref in this repository. The role can only write one bucket and
+      # invalidate one distribution, so branch-pinning buys nothing here.
+      values = ["repo:${var.github_repo}:*"]
     }
   }
 }
