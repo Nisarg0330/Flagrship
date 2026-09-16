@@ -10,8 +10,6 @@ dist/
 .env.local
 .env.production
 
-# Prisma
-packages/api/prisma/migrations/
 
 # IDE
 .vscode/
@@ -37,3 +35,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .venv/
+
+# Next.js
+*.tsbuildinfo
+next-env.d.ts

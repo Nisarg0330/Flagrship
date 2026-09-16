@@ -2,7 +2,8 @@
 // Flagrship Database Schema
 // ─────────────────────────────────────────────────────
 // This file is the source of truth for the database.
-// Run `npx prisma migrate dev` to apply changes.
+// Run `npm run db:migrate -- --name <change>` to create a migration and apply it locally.
+// Run `npm run db:deploy` to apply committed migrations (CI, staging, production).
 // Run `npx prisma generate` to update the client.
 // ─────────────────────────────────────────────────────
 

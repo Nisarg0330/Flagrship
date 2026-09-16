@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: flagrship
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/flagrship?schema=public
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma client + migrations
+        working-directory: packages/api
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: API tests
+        run: npm run test:api
+
+      - name: CLI tests
+        run: npm run test:cli
+
+      - name: JS SDK tests
+        run: npm run test:sdk
+
+      - name: Python SDK tests
+        run: |
+          python -m pip install --quiet pytest
+          python -m pytest packages/sdk-python -q
+
+      - name: Landing build
+        run: npm run build:landing
