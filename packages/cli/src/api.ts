@@ -90,4 +90,4 @@ export function createClient(apiUrl: string, apiKey: string, verbose = false): C
 }
 
 // Replaced at build time is overkill for now; bump by hand with package.json.
-export const CLI_VERSION = '0.0.1';
+export const CLI_VERSION = '0.0.2';

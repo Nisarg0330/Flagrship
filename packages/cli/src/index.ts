@@ -203,5 +203,8 @@ program.parseAsync(process.argv).catch((err: unknown) => {
   } else {
     console.error(`${bold('error:')} ${(err as Error).stack ?? String(err)}`);
   }
-  process.exit(1);
+  // Not process.exit(1): a failed fetch can still have a socket closing, and
+  // exiting under it trips a libuv assertion on Node 24 / Windows. Setting the
+  // code and letting the loop drain exits cleanly with the same status.
+  process.exitCode = 1;
 });

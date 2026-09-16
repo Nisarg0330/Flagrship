@@ -1,6 +1,6 @@
 {
   "name": "@flagrship/cli",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Flagrship CLI — manage feature flags from the terminal",
   "license": "MIT",
   "bin": {
