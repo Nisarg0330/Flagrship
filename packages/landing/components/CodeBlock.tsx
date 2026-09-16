@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 
-export type Lang = 'shell' | 'ts' | 'py' | 'log' | 'css';
+export type Lang = 'shell' | 'ts' | 'py' | 'log' | 'css' | 'json';
 
 type Rule = [RegExp, string];
 
@@ -19,7 +19,7 @@ const RULES: Record<Lang, Rule[]> = {
     [/\bOFF\b/, 'text-code-err'],
     [/\bON\b|\bLOCKED\b/, 'text-code-ok'],
     [/\b\d+%/, 'text-code-num'],
-    [/\bflagrship\b/, 'text-code-kw'],
+    [/(?<=^\$ )flagrship\b/, 'text-code-kw'],
   ],
   ts: [
     [/\/\/.*$/, 'text-code-cmt italic'],
@@ -45,6 +45,12 @@ const RULES: Record<Lang, Rule[]> = {
     [/\bfalse\b/, 'text-code-err'],
     [/\(\d+%\)/, 'text-code-cmt'],
   ],
+  json: [
+    [/"[^"]*"(?=\s*:)/, 'text-code-fn'],
+    [/"[^"]*"/, 'text-code-str'],
+    [/\b(true|false|null)\b/, 'text-code-kw'],
+    [/-?\b\d+(\.\d+)?\b/, 'text-code-num'],
+  ],
   css: [
     [/\/\*.*?\*\//, 'text-code-cmt italic'],
     [/@[a-z]+/, 'text-code-kw'],
@@ -56,7 +62,13 @@ const RULES: Record<Lang, Rule[]> = {
 };
 
 function tokenize(line: string, rules: Rule[]): ReactNode[] {
-  const combined = new RegExp(rules.map(([r]) => `(${r.source})`).join('|'), 'gm');
+  // Each rule becomes exactly one capture group, so the index of the group
+  // that matched is the index of the rule. Any groups inside a rule are made
+  // non-capturing first, or they would shift the indices.
+  const combined = new RegExp(
+    rules.map(([r]) => `(${r.source.replace(/\((?!\?)/g, '(?:')})`).join('|'),
+    'gm',
+  );
   const out: ReactNode[] = [];
   let last = 0;
   let key = 0;

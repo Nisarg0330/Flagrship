@@ -20,7 +20,7 @@ export function Nav() {
             ['#sdk', 'SDKs'],
             ['#pricing', 'Pricing'],
             ['#faq', 'FAQ'],
-            ['#', 'Docs'],
+            ['/docs', 'Docs'],
           ].map(([href, label]) => (
             <a key={label} href={href} className="hover:text-ink">
               {label}
@@ -450,7 +450,7 @@ export function Closing() {
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Button href="#">Install the CLI</Button>
-              <Button href="#" variant="ghost">
+              <Button href="/docs/quickstart" variant="ghost">
                 Read the quickstart
               </Button>
             </div>
@@ -467,8 +467,14 @@ export function Footer() {
       <div className={`${wrap} flex flex-wrap justify-between gap-5`}>
         <div>Flagrship · Ship without a release.</div>
         <div className="flex gap-7">
-          {['Docs', 'GitHub', 'Status', 'Privacy', 'nisarg@flagrship.dev'].map((l) => (
-            <a key={l} href="#" className="hover:text-ink">
+          {[
+            ['Docs', '/docs'],
+            ['GitHub', '#'],
+            ['Status', '#'],
+            ['Privacy', '#'],
+            ['nisarg@flagrship.dev', 'mailto:nisarg@flagrship.dev'],
+          ].map(([l, href]) => (
+            <a key={l} href={href} className="hover:text-ink">
               {l}
             </a>
           ))}
