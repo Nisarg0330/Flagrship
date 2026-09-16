@@ -28,7 +28,7 @@ cd packages\infra
 ```powershell
 cd site
 terraform init
-terraform apply -target=aws_route53_zone.main
+terraform apply -target="aws_route53_zone.main"
 terraform output name_servers
 ```
 
