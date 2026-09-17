@@ -1,0 +1,70 @@
+name: Beta feedback
+description: One friction point from one team. File one per friction, not one per team.
+labels: [beta-feedback]
+body:
+  - type: input
+    id: team
+    attributes:
+      label: Team
+      description: Org slug. Lets us count how many teams hit the same thing.
+      placeholder: acme
+    validations:
+      required: true
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Where in the flow
+      options:
+        - Install (npm/pip)
+        - init / first key
+        - Creating the first flag
+        - SDK integration in their code
+        - Rollout / rollback loop
+        - Reading the log
+        - Docs
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: trying
+    attributes:
+      label: What they were trying to do
+      description: In their words if you have them.
+    validations:
+      required: true
+
+  - type: textarea
+    id: happened
+    attributes:
+      label: What happened instead
+      description: Exact error text or exact wrong output. Paste, do not paraphrase.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: cost
+    attributes:
+      label: What it cost them
+      options:
+        - Under a minute, figured it out
+        - A few minutes, needed a hint
+        - Blocked until I intervened
+        - Gave up on that step
+    validations:
+      required: true
+
+  - type: textarea
+    id: quote
+    attributes:
+      label: The sentence they said
+      description: The verbatim line that best captures it. This is what we will quote back to ourselves when prioritising.
+
+  - type: checkboxes
+    id: seen
+    attributes:
+      label: Frequency
+      options:
+        - label: Another team already hit this (link the earlier issue in a comment)

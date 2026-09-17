@@ -1,5 +1,5 @@
 import { Hero } from '@/components/Hero';
-import { Bento, Closing, Faq, Footer, Loop, Nav, Pricing, Sdk } from '@/components/Sections';
+import { Bento, Closing, Faq, Footer, Loop, Nav, Pricing, Sdk, TryIt } from '@/components/Sections';
 
 function Ambient() {
   const blob =
@@ -20,6 +20,7 @@ export default function Page() {
         <Nav />
         <Hero />
         <Loop />
+        <TryIt />
         <Bento />
         <Sdk />
         <Pricing />

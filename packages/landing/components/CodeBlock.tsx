@@ -124,7 +124,7 @@ export function CodeBlock({
               } -mx-4 px-4`}
             >
               {numbers ? <span className="select-none text-code-line">{i + 1}</span> : null}
-              <span className="whitespace-pre">{tokenize(line, rules)}</span>
+              <span className="whitespace-pre">{line === '' ? ' ' : tokenize(line, rules)}</span>
             </div>
           ))}
         </code>

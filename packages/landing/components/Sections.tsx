@@ -28,10 +28,10 @@ export function Nav() {
           ))}
         </div>
         <div className="flex items-center gap-[18px] text-sm">
-          <a href="#" className="text-muted hover:text-ink">
-            Sign in
+          <a href="https://github.com/Nisarg0330/Flagrship" className="text-muted hover:text-ink">
+            GitHub
           </a>
-          <Button href="#" size="sm">
+          <Button href="#try" size="sm">
             Get started
           </Button>
         </div>
@@ -88,6 +88,77 @@ export function Loop() {
             </p>
           </Reveal>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ── try it ───────────────────────────────────────────────────────────────── */
+
+// A real, read-only key to a real organization on the live API. It can list
+// flags, read history, and drive the SDK. It cannot change anything - that is
+// what the beta key is for.
+export const DEMO_KEY = 'sk_read_9aY_NggYCzbqQe-tekXzbmojkqZfAr9J';
+
+const TRY = `$ npm install -g @flagrship/cli
+$ flagrship init \
+    --key ${DEMO_KEY}
+✓ Saved production key to .flagrship.json
+$ flagrship list
+KEY           STATE            NAME              CHANGED
+checkout-v2   ON   50% LOCKED  Checkout v2       2h ago
+new-pricing   OFF              New Pricing Page  2h ago
+dark-mode     ON  100%         Dark Mode         2h ago
+new-checkout  ON   25%         New Checkout      2h ago
+$ flagrship log new-checkout
+$ flagrship status checkout-v2`;
+
+const TRY_SDK = `import { Flagrship, bucket } from '@flagrship/sdk';
+
+const flags = new Flagrship({
+  apiKey: '${DEMO_KEY}',
+});
+await flags.ready();
+
+// new-checkout is at 25%. Which side are you on?
+bucket('new-checkout', 'alice');           // 40 → out
+bucket('new-checkout', 'carol');           // 1  → in
+flags.isEnabled('new-checkout', 'carol');  // true
+flags.isEnabled('dark-mode', 'anyone');    // true`;
+
+export function TryIt() {
+  return (
+    <section id="try" className="pb-28">
+      <div className={wrap}>
+        <Reveal className="text-center">
+          <Eyebrow>Try it in 60 seconds</Eyebrow>
+          <H2>
+            A real key. <Em>A real organization.</Em>
+          </H2>
+          <p className="mx-auto max-w-[58ch] text-[17px] text-muted">
+            No signup. This key is read-only, so you can see everything and change nothing. Every line below runs
+            against the live API right now.
+          </p>
+        </Reveal>
+
+        <div className="dots mt-12 grid items-start gap-5 rounded-2xl p-2 md:grid-cols-2 md:p-5">
+          <Reveal index={1}>
+            <CodeBlock code={TRY} lang="shell" title="terminal" numbers={false} />
+          </Reveal>
+          <Reveal index={2}>
+            <CodeBlock code={TRY_SDK} lang="ts" title="node" numbers={false} />
+          </Reveal>
+        </div>
+
+        <Reveal index={3} className="mx-auto mt-8 flex max-w-[58ch] flex-col items-center gap-4 text-center">
+          <p className="text-[15px] text-muted">
+            Try <code className="font-mono text-[0.9em]">flagrship rollout new-checkout 100</code> and read the error. That
+            is a scoped key doing its job. Want one that can flip flags?
+          </p>
+          <Button href="mailto:nisarg@flagrship.dev?subject=Flagrship%20beta%20key&body=Team%20size%3A%0ALanguage%3A%0AWhat%20we%27d%20flag%20first%3A">
+            Ask for a beta key
+          </Button>
+        </Reveal>
       </div>
     </section>
   );
@@ -332,6 +403,7 @@ const PLANS = [
     blurb: 'For side projects and small teams. Permanent, not a trial.',
     items: ['10 flags, 3 environments, 3 seats', 'JavaScript and Python SDKs', 'Percentage rollouts, rollback, lock', '7 days of audit history'],
     cta: 'Start free',
+    href: '#try',
     primary: false,
   },
   {
@@ -342,6 +414,7 @@ const PLANS = [
     blurb: 'For teams that ship every day and want to know who flipped what.',
     items: ['Unlimited flags, environments, seats', 'Attribute-based targeting', '90 days of audit history', 'Google and GitHub sign-in, email support'],
     cta: 'Start Pro',
+    href: 'mailto:nisarg@flagrship.dev?subject=Flagrship%20Pro',
     primary: true,
   },
   {
@@ -352,6 +425,7 @@ const PLANS = [
     blurb: 'For compliance requirements and a named person to call.',
     items: ['SAML and OIDC single sign-on', 'Unlimited audit retention and export', 'Data residency: US, EU, Canada', '99.95% SLA, dedicated support'],
     cta: 'Talk to us',
+    href: 'mailto:nisarg@flagrship.dev?subject=Flagrship%20Enterprise',
     primary: false,
   },
 ];
@@ -385,7 +459,7 @@ export function Pricing() {
                     </li>
                   ))}
                 </ul>
-                <Button href="#" variant={p.primary ? 'primary' : 'ghost'} className="mt-auto w-full">
+                <Button href={p.href} variant={p.primary ? 'primary' : 'ghost'} className="mt-auto w-full">
                   {p.cta}
                 </Button>
               </Card>
@@ -449,7 +523,7 @@ export function Closing() {
               Install the CLI, create a flag, add three lines to your app. No dashboard signup required to start.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <Button href="#">Install the CLI</Button>
+              <Button href="#try">Install the CLI</Button>
               <Button href="/docs/quickstart" variant="ghost">
                 Read the quickstart
               </Button>

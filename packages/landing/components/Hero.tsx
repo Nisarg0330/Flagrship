@@ -92,7 +92,7 @@ export function Hero() {
             </p>
           </Reveal>
           <Reveal index={3} className="mt-[34px] flex flex-wrap justify-center gap-3">
-            <Button href="#loop">Install the CLI</Button>
+            <Button href="#try">Try it now</Button>
             <Button href="/docs/quickstart" variant="ghost">
               Read the docs
             </Button>
