@@ -81,12 +81,12 @@ export function Hero() {
             <Tag>Public beta · JavaScript and Python</Tag>
           </Reveal>
           <Reveal index={1}>
-            <h1 className="mx-auto mt-[22px] mb-5 max-w-[16ch] font-serif text-[clamp(44px,7.2vw,88px)] leading-[1.05] tracking-[-0.03em] text-ink text-balance">
-              Ship without <em className="italic text-muted">a release.</em>
+            <h1 className="mx-auto mt-[22px] mb-5 max-w-[16ch] font-display font-semibold text-[clamp(44px,7.2vw,88px)] leading-[1.02] tracking-[-0.045em] text-ink text-balance">
+              Ship without <span className="font-normal text-muted">a release.</span>
             </h1>
           </Reveal>
           <Reveal index={2}>
-            <p className="mx-auto max-w-[54ch] text-lg leading-[1.55] text-muted">
+            <p className="mx-auto max-w-[60ch] text-lg leading-[1.55] text-muted">
               Deploy code dark. Roll it out to 1% of users. Roll it back in one command, from the terminal, in seconds. No
               redeploy, no hotfix branch, no 3am revert.
             </p>

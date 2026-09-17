@@ -194,7 +194,7 @@ function Ring({ pct }: { pct: number }) {
         <circle cx="50" cy="50" r="44" fill="none" stroke="#111111" strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <b className="font-serif text-[40px] font-normal leading-none tracking-[-0.03em] text-ink">{pct}%</b>
+        <b className="font-display font-semibold text-[40px] leading-none tracking-[-0.04em] text-ink">{pct}%</b>
         <span className="mt-1.5 text-[11px] uppercase tracking-[0.06em] text-muted">rollout</span>
       </div>
     </div>
@@ -203,7 +203,7 @@ function Ring({ pct }: { pct: number }) {
 
 function Stat({ value, unit }: { value: string; unit: string }) {
   return (
-    <div className="mt-[18px] mb-1.5 font-serif text-[56px] leading-none tracking-[-0.03em] text-ink">
+    <div className="mt-[18px] mb-1.5 font-display font-semibold text-[56px] leading-none tracking-[-0.04em] text-ink">
       {value}
       <small className="ml-1.5 font-sans text-sm tracking-normal text-muted">{unit}</small>
     </div>
@@ -446,7 +446,7 @@ export function Pricing() {
             <Reveal key={p.name} index={i}>
               <Card className={`flex h-full flex-col ${p.primary ? 'border-ink' : ''}`}>
                 <Tag tone={p.tone}>{p.name}</Tag>
-                <div className="mt-3.5 mb-0.5 font-serif text-[44px] leading-none tracking-[-0.03em] text-ink">
+                <div className="mt-3.5 mb-0.5 font-display font-semibold text-[44px] leading-none tracking-[-0.04em] text-ink">
                   {p.price}
                   {p.unit ? <small className="font-sans text-[13px] tracking-normal text-muted">{p.unit}</small> : null}
                 </div>

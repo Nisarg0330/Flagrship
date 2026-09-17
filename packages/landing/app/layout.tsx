@@ -1,15 +1,20 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono, Newsreader } from 'next/font/google';
+import { Geist_Mono } from 'next/font/google';
+import localFont from 'next/font/local';
 import './globals.css';
 
-const geist = Geist({ subsets: ['latin'], variable: '--font-geist', weight: ['400', '500', '600'] });
-const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', weight: ['400', '500'] });
-const newsreader = Newsreader({
-  subsets: ['latin'],
-  variable: '--font-newsreader',
-  style: ['normal', 'italic'],
-  weight: ['400', '500'],
+// Switzer (Fontshare, free for web use), self-hosted from public/fonts so the
+// site stays fully static with no third-party font request.
+const switzer = localFont({
+  variable: '--font-switzer',
+  display: 'swap',
+  src: [
+    { path: '../public/fonts/Switzer-400.woff2', weight: '400', style: 'normal' },
+    { path: '../public/fonts/Switzer-500.woff2', weight: '500', style: 'normal' },
+    { path: '../public/fonts/Switzer-600.woff2', weight: '600', style: 'normal' },
+  ],
 });
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono', weight: ['400', '500'] });
 
 export const metadata: Metadata = {
   title: 'Flagrship',
@@ -22,7 +27,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable} ${newsreader.variable}`}>
+    <html lang="en" className={`${switzer.variable} ${geistMono.variable}`}>
       <body>{children}</body>
     </html>
   );

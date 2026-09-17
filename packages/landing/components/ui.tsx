@@ -50,14 +50,14 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 
 export function H2({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <h2 className={`mt-3.5 mb-4 font-serif text-[clamp(32px,4.4vw,48px)] leading-[1.1] tracking-[-0.025em] text-ink text-balance ${className}`}>
+    <h2 className={`mt-3.5 mb-4 font-display font-semibold text-[clamp(32px,4.4vw,48px)] leading-[1.08] tracking-[-0.035em] text-ink text-balance ${className}`}>
       {children}
     </h2>
   );
 }
 
 export function Em({ children }: { children: ReactNode }) {
-  return <em className="italic text-muted">{children}</em>;
+  return <span className="font-normal text-muted">{children}</span>;
 }
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {

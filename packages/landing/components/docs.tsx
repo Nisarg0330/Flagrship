@@ -12,7 +12,7 @@ const slug = (s: string) =>
 export function Title({ children, lede }: { children: string; lede?: ReactNode }) {
   return (
     <header className="mb-10 border-b border-line pb-8">
-      <h1 className="font-serif text-[clamp(34px,4.6vw,48px)] leading-[1.1] tracking-[-0.025em] text-ink text-balance">{children}</h1>
+      <h1 className="font-display font-semibold text-[clamp(34px,4.6vw,48px)] leading-[1.08] tracking-[-0.035em] text-ink text-balance">{children}</h1>
       {lede ? <p className="mt-4 max-w-[62ch] text-[17px] leading-[1.6] text-muted">{lede}</p> : null}
     </header>
   );

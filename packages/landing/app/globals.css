@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-geist), "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
-  --font-serif: var(--font-newsreader), "Lyon Text", Georgia, serif;
+  --font-sans: var(--font-switzer), "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
+  --font-display: var(--font-switzer), "SF Pro Display", "Helvetica Neue", system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), "SF Mono", ui-monospace, Menlo, monospace;
 }
 
