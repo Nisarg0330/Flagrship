@@ -1,108 +1,297 @@
 import { CodeBlock } from './CodeBlock';
+import { REPO } from './Nav';
 import { Reveal } from './Reveal';
-import { Button, Card, Check, Em, Eyebrow, H2, Logo, Tag } from './ui';
+import { Tabs } from './Tabs';
+import { Button, Card, Check, Em, Eyebrow, H2, Icon, Lede, Panel, Tag, type IconName } from './ui';
 
 const wrap = 'mx-auto max-w-[1120px] px-6';
 
-/* ── nav ─────────────────────────────────────────────────────────────────── */
+/* ── product mockups ──────────────────────────────────────────────────────── */
 
-export function Nav() {
+/** A small "app window" for the mockups inside feature columns. */
+function Window({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <nav className="sticky top-0 z-10 border-b border-line bg-canvas/80 backdrop-blur-[14px]">
-      <div className={`${wrap} flex h-[60px] items-center justify-between`}>
-        <a href="#" className="flex items-center gap-2.5 font-semibold tracking-[-0.01em] text-ink">
-          <Logo />
-          Flagrship
-        </a>
-        <div className="hidden gap-7 text-sm text-muted md:flex">
-          {[
-            ['#loop', 'How it works'],
-            ['#sdk', 'SDKs'],
-            ['#pricing', 'Pricing'],
-            ['#faq', 'FAQ'],
-            ['/docs', 'Docs'],
-          ].map(([href, label]) => (
-            <a key={label} href={href} className="hover:text-ink">
-              {label}
-            </a>
-          ))}
-        </div>
-        <div className="flex items-center gap-[18px] text-sm">
-          <a href="https://github.com/Nisarg0330/Flagrship" className="text-muted hover:text-ink">
-            GitHub
-          </a>
-          <Button href="#try" size="sm">
-            Get started
-          </Button>
-        </div>
+    <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.03)]">
+      <div className="flex items-center gap-2 border-b border-line px-3.5 py-2">
+        <span className="size-2 rounded-full bg-line-2" />
+        <span className="size-2 rounded-full bg-line-2" />
+        <span className="size-2 rounded-full bg-line-2" />
+        <span className="ml-2 font-mono text-[11px] text-muted-2">{title}</span>
       </div>
-    </nav>
+      <div className="p-3.5">{children}</div>
+    </div>
   );
 }
 
-/* ── the loop ─────────────────────────────────────────────────────────────── */
+const FLAGS: Array<[string, 'on' | 'off' | 'lock', string, string]> = [
+  ['checkout-v2', 'lock', '50%', '2h ago'],
+  ['new-pricing', 'off', '—', '2h ago'],
+  ['dark-mode', 'on', '100%', '1d ago'],
+  ['new-checkout', 'on', '25%', '3m ago'],
+];
 
-const TERMINAL = `$ flagrship create new-checkout
-✓ Created new-checkout in staging — OFF
-$ flagrship rollout new-checkout 25
-✓ Rolled out new-checkout in staging — ON   25%
-$ flagrship rollout new-checkout 100
-✓ Rolled out new-checkout in staging — ON  100%
-$ flagrship rollback new-checkout
-✓ Rolled back new-checkout in staging — ON   25%`;
-
-const APP_LOG = `19:38:24  isEnabled = false  (0%)
-19:38:25  isEnabled = false  (0%)
-  ↻ config updated
-19:38:27  isEnabled = true   (100%)  ← changed
-19:38:28  isEnabled = true   (100%)
-  ↻ config updated
-19:38:30  isEnabled = false  (0%)    ← changed`;
-
-export function Loop() {
+function FlagTable() {
   return (
-    <section id="loop" className="py-28">
-      <div className={wrap}>
-        <Reveal className="text-center">
-          <Eyebrow>How it works</Eyebrow>
-          <H2>
-            Three commands. <Em>One flag.</Em>
-          </H2>
-          <p className="mx-auto max-w-[56ch] text-[17px] text-muted">
-            The flag is the release mechanism. Your code ships through CI as usual and does nothing until you say so.
-          </p>
-        </Reveal>
+    <table className="w-full border-collapse font-mono text-[11px]">
+      <thead>
+        <tr className="text-[9px] tracking-[0.08em] text-muted-2">
+          {['FLAG', 'STATE', 'ROLLOUT', 'CHANGED'].map((h) => (
+            <th key={h} className="pb-2 text-left font-medium">{h}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {FLAGS.map(([k, s, r, t]) => (
+          <tr key={k} className="border-t border-line">
+            <td className="py-2 text-ink">{k}</td>
+            <td className="py-2">
+              <span className="inline-flex items-center gap-1.5">
+                <i className={`size-1.5 rounded-full ${s === 'off' ? 'bg-muted-2' : s === 'lock' ? 'bg-sand-700' : 'bg-mint-700'}`} />
+                {s === 'lock' ? 'locked' : s}
+              </span>
+            </td>
+            <td className="py-2 text-ink-2">{r}</td>
+            <td className="py-2 text-muted">{t}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
-        <div className="dots mt-12 grid items-start gap-5 rounded-2xl p-2 md:grid-cols-[1.15fr_1fr] md:p-5">
-          <Reveal index={1}>
-            <CodeBlock code={TERMINAL} lang="shell" title="terminal" highlight={[7, 8]} />
-            <p className="px-1 pt-3 text-[13px] text-muted">
-              Every command is a single API call. Every call is audited with who, when, before and after.
-            </p>
+function SdkCard() {
+  return (
+    <div className="font-mono text-[11px] leading-[1.7]">
+      <div className="mb-2 flex items-center gap-2 text-[10px] text-muted-2">
+        <span className="rounded border border-line px-1.5 py-0.5">app.ts</span>
+        <span className="rounded border border-line px-1.5 py-0.5">app.py</span>
+      </div>
+      <div className="text-ink-2">
+        <span className="text-sky-700">const</span> on = flags.<span className="text-ink">isEnabled</span>(
+        <br />
+        &nbsp;&nbsp;<span className="text-mint-700">&apos;new-checkout&apos;</span>, user.id
+        <br />
+        );
+      </div>
+      <div className="mt-2.5 rounded-lg border border-line bg-surface-2 p-2.5 text-[10px] text-muted">
+        <div className="flex justify-between"><span>alice</span><span>bucket 40 · <b className="text-rose-700">out</b></span></div>
+        <div className="flex justify-between"><span>carol</span><span>bucket 1 · <b className="text-mint-700">in</b></span></div>
+        <div className="flex justify-between"><span>user-29</span><span>bucket 0 · <b className="text-mint-700">in</b></span></div>
+      </div>
+    </div>
+  );
+}
+
+const AUDIT: Array<[string, string, string]> = [
+  ['21s ago', 'rollback', '30% → 50%'],
+  ['30s ago', 'rollout', '50% → 30%'],
+  ['10m ago', 'unlock', 'checkout-v2'],
+  ['10m ago', 'lock', 'CVE-2026-1234'],
+];
+
+function AuditTable() {
+  return (
+    <table className="w-full border-collapse font-mono text-[11px]">
+      <thead>
+        <tr className="text-[9px] tracking-[0.08em] text-muted-2">
+          {['WHEN', 'ACTION', 'CHANGE'].map((h) => (
+            <th key={h} className="pb-2 text-left font-medium">{h}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {AUDIT.map(([w, a, c]) => (
+          <tr key={w + a} className="border-t border-line">
+            <td className="py-2 text-muted">{w}</td>
+            <td className="py-2 text-ink">{a}</td>
+            <td className="py-2 text-ink-2">{c}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/* ── platform: three columns in a panel ───────────────────────────────────── */
+
+const COLUMNS: Array<{ title: string; body: string; window: string; mock: React.ReactNode; tags: string[] }> = [
+  { title: 'CLI', body: 'Create, roll out, lock and roll back from the terminal. Every command is one API call, and every call is audited.', window: 'flagrship list', mock: <FlagTable />, tags: ['npm', 'brew soon'] },
+  { title: 'SDKs', body: 'JavaScript and Python. In-memory evaluation, no network call per check, the same bucket for the same user in both.', window: 'evaluate', mock: <SdkCard />, tags: ['node', 'python'] },
+  { title: 'Audit & locks', body: 'Who changed what, and what it was before. Lock a flag with a reason and nobody moves it until an admin says so.', window: 'flagrship log', mock: <AuditTable />, tags: ['append-only'] },
+];
+
+export function Platform() {
+  return (
+    <section id="features" className="py-16 md:py-24">
+      <div className={wrap}>
+        <Panel>
+          <Reveal className="text-center">
+            <H2 className="mt-0">One flag. Every surface.</H2>
+            <Lede className="mx-auto">The terminal, your code and the audit log all talk to one API. Nothing you do in one is hidden from the others.</Lede>
           </Reveal>
-          <Reveal index={2}>
-            <CodeBlock code={APP_LOG} lang="log" title="your application" numbers={false} />
-            <p className="px-1 pt-3 text-[13px] text-muted">
-              The SDK polls with <code className="font-mono text-[0.92em]">If-None-Match</code>. Unchanged config is a 304 and
-              transfers nothing.
-            </p>
-          </Reveal>
-        </div>
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {COLUMNS.map((c, i) => (
+              <Reveal key={c.title} index={i + 1} className="flex flex-col">
+                <Window title={c.window}>{c.mock}</Window>
+                <h3 className="mt-7 text-[22px] font-medium tracking-[-0.02em] text-ink">{c.title}</h3>
+                <p className="mt-2 text-[15px] leading-[1.6] text-muted">{c.body}</p>
+                <div className="mt-4 flex gap-2 font-mono text-[11px] text-muted-2">
+                  {c.tags.map((t) => (
+                    <span key={t} className="rounded border border-line px-1.5 py-0.5">{t}</span>
+                  ))}
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </Panel>
       </div>
     </section>
   );
 }
 
-/* ── try it ───────────────────────────────────────────────────────────────── */
+/* ── incident → rollback ──────────────────────────────────────────────────── */
+
+const ROLLBACK = `$ flagrship status new-checkout
+new-checkout  ON  100%  production  changed 4m ago by ci@
+$ flagrship rollback new-checkout
+✓ Rolled back new-checkout in production — ON   25%
+$ flagrship log new-checkout --limit 2
+21s ago  rollback  100% → 25%   nisarg@
+4m ago   rollout    25% → 100%  ci@`;
+
+const LOCK = `$ flagrship lock checkout-v2 --reason "CVE-2026-1234"
+✓ Locked checkout-v2 in production
+$ flagrship rollout checkout-v2 100
+error: Flag "checkout-v2" is locked: CVE-2026-1234.
+  An admin must unlock it first.`;
+
+function FlagDetail() {
+  return (
+    <Card className="h-full p-6">
+      <div className="font-mono text-[11px] text-muted-2">flags / checkout-v2</div>
+      <h3 className="mt-2 text-[18px] font-medium tracking-[-0.01em] text-ink">Checkout v2</h3>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Tag tone="mint">on · 50%</Tag>
+        <Tag tone="sand">locked</Tag>
+        <Tag>production</Tag>
+      </div>
+      <dl className="mt-6 grid grid-cols-[110px_1fr] gap-y-3 text-[13px]">
+        <dt className="text-muted">Lock reason</dt>
+        <dd className="font-mono text-ink">CVE-2026-1234</dd>
+        <dt className="text-muted">Locked by</dt>
+        <dd className="text-ink-2">nisarg@ · 10m ago</dd>
+        <dt className="text-muted">Last change</dt>
+        <dd className="text-ink-2">rollout 30% → 50% · 21s ago</dd>
+        <dt className="text-muted">Evaluations</dt>
+        <dd className="text-ink-2">in-memory, 0 network calls</dd>
+      </dl>
+      <div className="mt-6 border-t border-line pt-4 text-[13px] leading-[1.6] text-muted">
+        While locked, every mutation on this flag returns <span className="font-mono text-ink">409</span> with the reason. Archive is refused in every environment.
+      </div>
+    </Card>
+  );
+}
+
+const PAIR: Array<{ icon: IconName; title: string; body: string }> = [
+  { icon: 'percent', title: 'Roll out by percentage', body: 'Users hash into 100 buckets. Raising the number moves the threshold, never the user, so nobody flickers between cohorts.' },
+  { icon: 'undo', title: 'Roll back, one command', body: 'Rollback is an undo. It restores the state before the last change and logs itself, so a second rollback undoes the first.' },
+];
+
+export function Incident() {
+  return (
+    <section className="py-16 md:py-24">
+      <div className={wrap}>
+        <Reveal>
+          <H2 className="mt-0">From incident to rollback in seconds</H2>
+          <Lede>No redeploy, no hotfix branch, no 3am revert. The vulnerable code stays deployed but dormant.</Lede>
+        </Reveal>
+        <div className="mt-12 grid gap-5 md:grid-cols-[1fr_1.3fr]">
+          <Reveal index={1}>
+            <FlagDetail />
+          </Reveal>
+          <Reveal index={2}>
+            <Card className="h-full p-6">
+              <Tabs
+                variant="underline"
+                items={[
+                  { label: 'Rollback', panel: <CodeBlock code={ROLLBACK} lang="shell" numbers={false} /> },
+                  { label: 'Lock', panel: <CodeBlock code={LOCK} lang="shell" numbers={false} /> },
+                ]}
+              />
+            </Card>
+          </Reveal>
+        </div>
+        <div className="mt-16 grid gap-10 md:grid-cols-2">
+          {PAIR.map((f, i) => (
+            <Reveal key={f.title} index={i + 1}>
+              <Icon name={f.icon} className="size-5 text-ink" />
+              <h3 className="mt-4 text-[22px] font-medium tracking-[-0.02em] text-ink">{f.title}</h3>
+              <p className="mt-2 max-w-[48ch] text-[15px] leading-[1.6] text-muted">{f.body}</p>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal index={3} className="mt-14 text-center">
+          <Button href="#try" variant="ghost">
+            Try free →
+          </Button>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ── deploy with confidence: six cards in a panel ─────────────────────────── */
+
+const SIX: Array<{ icon: IconName; title: string; body: string }> = [
+  { icon: 'list', title: 'Every change audited', body: 'The audit row is written in the same transaction as the change. There is no such thing as an unlogged mutation.' },
+  { icon: 'lock', title: 'Locks stop bad rollouts', body: 'An admin locks a flag with a reason. Every mutation returns 409 with that reason until it is unlocked.' },
+  { icon: 'hash', title: 'Same answer in every SDK', body: 'MurmurHash3 over flagKey:userId. Node and Python pass one shared conformance file, so a user never flips between services.' },
+  { icon: 'shield', title: 'Never sees your users', body: 'Bucketing runs inside the SDK. The API has no endpoint that accepts a user ID, so there is nothing to leak.' },
+  { icon: 'bolt', title: '304s, not bandwidth', body: 'Every config has an ETag. Unchanged polls return 304 with an empty body. Config crosses the wire once, then only when you change it.' },
+  { icon: 'flag', title: 'Never blocks your boot', body: 'If Flagrship is unreachable the SDK keeps its last config or your in-code defaults. It never throws on the boot path.' },
+];
+
+export function Confidence() {
+  return (
+    <section className="py-16 md:py-24">
+      <div className={wrap}>
+        <Panel>
+          <Reveal>
+            <H2 className="mt-0">Deploy with confidence</H2>
+            <Lede>Six rules the API enforces so you do not have to remember them at 3am.</Lede>
+          </Reveal>
+          <div className="mt-12 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {SIX.map((f, i) => (
+              <Reveal key={f.title} index={(i % 3) + 1}>
+                <Card className="h-full p-6">
+                  <Icon name={f.icon} className="size-5 text-ink" />
+                  <h3 className="mt-5 text-[17px] font-medium tracking-[-0.01em] text-ink">{f.title}</h3>
+                  <p className="mt-2 text-[14px] leading-[1.6] text-muted">{f.body}</p>
+                </Card>
+              </Reveal>
+            ))}
+          </div>
+          <Reveal className="mt-12 flex flex-wrap gap-3">
+            <Button href="#try">Get started</Button>
+            <Button href="/docs/concepts/" variant="ghost">
+              Read the concepts →
+            </Button>
+          </Reveal>
+        </Panel>
+      </div>
+    </section>
+  );
+}
+
+/* ── try it: the big tabbed window ────────────────────────────────────────── */
 
 // A real, read-only key to a real organization on the live API. It can list
 // flags, read history, and drive the SDK. It cannot change anything - that is
 // what the beta key is for.
 export const DEMO_KEY = 'sk_read_9aY_NggYCzbqQe-tekXzbmojkqZfAr9J';
 
-const TRY = `$ npm install -g @flagrship/cli
-$ flagrship init \
-    --key ${DEMO_KEY}
+const TRY_CLI = `$ npm install -g @flagrship/cli
+$ flagrship init --key ${DEMO_KEY}
 ✓ Saved production key to .flagrship.json
 $ flagrship list
 KEY           STATE            NAME              CHANGED
@@ -111,9 +300,10 @@ new-pricing   OFF              New Pricing Page  2h ago
 dark-mode     ON  100%         Dark Mode         2h ago
 new-checkout  ON   25%         New Checkout      2h ago
 $ flagrship log new-checkout
-$ flagrship status checkout-v2`;
+$ flagrship rollout new-checkout 100
+error: this key has scope "read"; rollout needs "write".`;
 
-const TRY_SDK = `import { Flagrship, bucket } from '@flagrship/sdk';
+const TRY_JS = `import { Flagrship, bucket } from '@flagrship/sdk';
 
 const flags = new Flagrship({
   apiKey: '${DEMO_KEY}',
@@ -126,267 +316,51 @@ bucket('new-checkout', 'carol');           // 1  → in
 flags.isEnabled('new-checkout', 'carol');  // true
 flags.isEnabled('dark-mode', 'anyone');    // true`;
 
+const TRY_PY = `from flagrship import Flagrship, bucket
+
+flags = Flagrship(api_key="${DEMO_KEY}")
+flags.ready()
+
+# Same hash, same buckets, same answers as Node.
+bucket("new-checkout", "alice")            # 40 → out
+bucket("new-checkout", "carol")            # 1  → in
+flags.is_enabled("new-checkout", "carol")  # True
+flags.is_enabled("dark-mode", "anyone")    # True`;
+
+const pill = (icon: IconName, label: string) => (
+  <>
+    <Icon name={icon} className="size-4" />
+    {label}
+  </>
+);
+
 export function TryIt() {
   return (
-    <section id="try" className="pb-28">
+    <section id="try" className="scroll-mt-16 py-16 md:py-24">
       <div className={wrap}>
         <Reveal className="text-center">
-          <Eyebrow>Try it in 60 seconds</Eyebrow>
-          <H2>
-            A real key. <Em>A real organization.</Em>
-          </H2>
-          <p className="mx-auto max-w-[58ch] text-[17px] text-muted">
-            No signup. This key is read-only, so you can see everything and change nothing. Every line below runs
-            against the live API right now.
-          </p>
+          <H2 className="mt-0">Ship fast without a release</H2>
+          <Lede className="mx-auto">
+            A real key to a real organization on the live API. Read-only, no signup. Every line below runs right now.
+          </Lede>
         </Reveal>
-
-        <div className="dots mt-12 grid items-start gap-5 rounded-2xl p-2 md:grid-cols-2 md:p-5">
-          <Reveal index={1}>
-            <CodeBlock code={TRY} lang="shell" title="terminal" numbers={false} />
-          </Reveal>
-          <Reveal index={2}>
-            <CodeBlock code={TRY_SDK} lang="ts" title="node" numbers={false} />
-          </Reveal>
-        </div>
-
-        <Reveal index={3} className="mx-auto mt-8 flex max-w-[58ch] flex-col items-center gap-4 text-center">
+        <Reveal index={1} className="mt-12">
+          <Tabs
+            items={[
+              { label: pill('terminal', 'CLI'), panel: <CodeBlock code={TRY_CLI} lang="shell" title="terminal" numbers={false} /> },
+              { label: pill('js', 'JavaScript'), panel: <CodeBlock code={TRY_JS} lang="ts" title="app.ts" /> },
+              { label: pill('python', 'Python'), panel: <CodeBlock code={TRY_PY} lang="py" title="app.py" /> },
+            ]}
+          />
+        </Reveal>
+        <Reveal index={2} className="mx-auto mt-10 flex max-w-[58ch] flex-col items-center gap-4 text-center">
           <p className="text-[15px] text-muted">
-            Try <code className="font-mono text-[0.9em]">flagrship rollout new-checkout 100</code> and read the error. That
-            is a scoped key doing its job. Want one that can flip flags?
+            The last CLI line is a scoped key doing its job. Want one that can flip flags?
           </p>
           <Button href="mailto:nisarg@flagrship.dev?subject=Flagrship%20beta%20key&body=Team%20size%3A%0ALanguage%3A%0AWhat%20we%27d%20flag%20first%3A">
             Ask for a beta key
           </Button>
         </Reveal>
-      </div>
-    </section>
-  );
-}
-
-/* ── bento ────────────────────────────────────────────────────────────────── */
-
-const LOCK = `$ flagrship lock checkout-v2 --reason "CVE-2026-1234"
-$ flagrship rollout checkout-v2 50
-error: Flag "checkout-v2" is locked: CVE-2026-1234.
-  An admin must unlock it first.`;
-
-const AUDIT = [
-  ['21s ago', 'rollback', '30% → 50%'],
-  ['30s ago', 'rollout', '50% → 30%'],
-  ['10m ago', 'unlocked', 'unlocked'],
-  ['10m ago', 'locked', 'CVE-2026-1234'],
-];
-
-const USERS: Array<[string, number]> = [
-  ['alice', 40],
-  ['carol', 1],
-  ['user-53', 49],
-  ['user-29', 0],
-];
-
-function Ring({ pct }: { pct: number }) {
-  const c = 2 * Math.PI * 44;
-  return (
-    <div className="relative size-[180px]" aria-label={`${pct} percent rollout`}>
-      <svg viewBox="0 0 100 100" className="size-full -rotate-90">
-        <circle cx="50" cy="50" r="44" fill="none" stroke="#EAEAEA" strokeWidth="6" />
-        <circle cx="50" cy="50" r="44" fill="none" stroke="#111111" strokeWidth="6" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <b className="font-serif text-[40px] font-normal leading-none tracking-[-0.03em] text-ink">{pct}%</b>
-        <span className="mt-1.5 text-[11px] uppercase tracking-[0.06em] text-muted">rollout</span>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ value, unit }: { value: string; unit: string }) {
-  return (
-    <div className="mt-[18px] mb-1.5 font-serif text-[56px] leading-none tracking-[-0.03em] text-ink">
-      {value}
-      <small className="ml-1.5 font-sans text-sm tracking-normal text-muted">{unit}</small>
-    </div>
-  );
-}
-
-const P = ({ children }: { children: React.ReactNode }) => (
-  <p className="mt-2 text-sm leading-[1.55] text-muted">{children}</p>
-);
-const H3 = ({ children }: { children: React.ReactNode }) => (
-  <h3 className="mt-3.5 text-[15px] font-semibold tracking-[-0.005em] text-ink">{children}</h3>
-);
-
-export function Bento() {
-  const pct = 25;
-  return (
-    <section className="pb-28">
-      <div className={wrap}>
-        <Reveal>
-          <Eyebrow>Built for on-call</Eyebrow>
-          <H2>
-            Deterministic, auditable, <Em>and fast enough to forget about.</Em>
-          </H2>
-        </Reveal>
-
-        <div className="mt-12 grid gap-4 md:grid-cols-6">
-          <Reveal className="md:col-span-3 md:row-span-2">
-            <Card className="h-full">
-              <Tag tone="sky">Deterministic rollouts</Tag>
-              <H3>The same user gets the same answer. Every time, in every language.</H3>
-              <P>
-                Users are hashed into 100 buckets. Raising the percentage moves the threshold, never the user, so nobody
-                flickers in and out of a cohort.
-              </P>
-              <div className="mt-7 grid items-center gap-7 sm:grid-cols-[180px_1fr]">
-                <Ring pct={pct} />
-                <div className="flex flex-col gap-2">
-                  {USERS.map(([u, b]) => (
-                    <div key={u} className="flex items-center justify-between gap-3 whitespace-nowrap rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-xs text-ink-2">
-                      <span>
-                        <span className="text-muted">{u}</span> · bucket {b}
-                      </span>
-                      <Tag tone={b < pct ? 'mint' : 'rose'}>{b < pct ? 'in' : 'out'}</Tag>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          </Reveal>
-
-          <Reveal index={1} className="md:col-span-3">
-            <Card>
-              <Tag>Evaluation</Tag>
-              <Stat value="< 1" unit="ms" />
-              <P>In-memory lookup and a 32-bit hash. No network call per check, ever. The API is the control plane, never the hot path.</P>
-            </Card>
-          </Reveal>
-
-          <Reveal index={2} className="md:col-span-3">
-            <Card>
-              <Tag>SDK size</Tag>
-              <Stat value="2.1" unit="KB gzipped" />
-              <P>Zero dependencies in JavaScript and Python. The hash is 40 lines you can read, and both SDKs pass the same conformance file.</P>
-            </Card>
-          </Reveal>
-
-          <Reveal index={1} className="md:col-span-3">
-            <Card>
-              <Tag>Audit trail</Tag>
-              <H3>Who changed what, and what it was before.</H3>
-              <table className="mt-[18px] w-full border-collapse font-mono text-xs">
-                <thead>
-                  <tr>
-                    {['WHEN', 'ACTION', 'CHANGE', 'BY'].map((h) => (
-                      <th key={h} className="border-b border-line pb-2 pr-2.5 text-left text-[10px] font-medium tracking-[0.06em] text-muted-2">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {AUDIT.map(([when, action, change]) => (
-                    <tr key={when + action}>
-                      <td className="border-b border-line py-2 pr-2.5 text-muted last:border-0">{when}</td>
-                      <td className="border-b border-line py-2 pr-2.5 text-ink-2">{action}</td>
-                      <td className="border-b border-line py-2 pr-2.5 text-ink-2">{change}</td>
-                      <td className="border-b border-line py-2 pr-2.5 text-muted">nisarg@</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <P>Append-only. The audit row is written in the same transaction as the change, so there is no such thing as an unlogged mutation.</P>
-            </Card>
-          </Reveal>
-
-          <Reveal index={2} className="md:col-span-3">
-            <Card>
-              <Tag tone="sand">Incidents</Tag>
-              <H3>Lock a flag. Nobody can touch it until an admin says so.</H3>
-              <CodeBlock code={LOCK} lang="shell" numbers={false} className="mt-[18px]" />
-              <P>The vulnerable code stays deployed but dormant. Patch it on your own schedule.</P>
-            </Card>
-          </Reveal>
-
-          <Reveal className="md:col-span-6">
-            <Card>
-              <div className="grid items-center gap-8 md:grid-cols-[1fr_1.4fr]">
-                <div>
-                  <Tag tone="mint">Cheap to poll</Tag>
-                  <H3>3,600 polls an hour, and only the first one carries a body.</H3>
-                  <P>
-                    Every response has an ETag. The SDK sends it back on the next poll; if nothing changed, the API answers
-                    304 with an empty body. Flag config crosses the wire once, then only when you change it.
-                  </P>
-                </div>
-                <div className="flex flex-col gap-2 font-mono text-xs">
-                  {[
-                    ['200', 100, '3.8 KB'],
-                    ['304', 0, '0 B'],
-                    ['304', 0, '0 B'],
-                    ['304', 0, '0 B'],
-                    ['304', 0, '0 B'],
-                  ].map(([st, w, label], i) => (
-                    <div key={i} className="grid grid-cols-[52px_1fr_60px] items-center gap-3">
-                      <span className="text-muted">{st}</span>
-                      <div className="relative h-1.5 overflow-hidden rounded-[3px] bg-line">
-                        <i className="absolute inset-y-0 left-0 rounded-[3px] bg-ink" style={{ width: w ? `${w}%` : '2px' }} />
-                      </div>
-                      <span className="text-muted">{label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          </Reveal>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ── sdk ──────────────────────────────────────────────────────────────────── */
-
-const TS = `import { Flagrship } from '@flagrship/sdk';
-
-const flags = new Flagrship({
-  apiKey: process.env.FLAGRSHIP_KEY,
-});
-await flags.ready();
-
-if (flags.isEnabled('new-checkout', user.id)) {
-  showNewCheckout();
-}`;
-
-const PY = `from flagrship import Flagrship
-
-flags = Flagrship(api_key=os.environ["FLAGRSHIP_KEY"])
-flags.ready()
-
-if flags.is_enabled("new-checkout", user.id):
-    show_new_checkout()`;
-
-export function Sdk() {
-  return (
-    <section id="sdk" className="pb-28">
-      <div className={wrap}>
-        <Reveal className="text-center">
-          <Eyebrow>SDKs</Eyebrow>
-          <H2>
-            A handful of lines. <Em>Same behaviour in every language.</Em>
-          </H2>
-          <p className="mx-auto max-w-[56ch] text-[17px] text-muted">
-            Initialise once at boot. If Flagrship is unreachable, your app keeps its last config and never blocks on us.
-          </p>
-        </Reveal>
-        <div className="dots mt-12 grid gap-5 rounded-2xl p-2 md:grid-cols-2 md:p-5">
-          <Reveal index={1}>
-            <CodeBlock code={TS} lang="ts" title="app.ts" />
-          </Reveal>
-          <Reveal index={2}>
-            <CodeBlock code={PY} lang="py" title="app.py" />
-          </Reveal>
-        </div>
       </div>
     </section>
   );
@@ -432,25 +406,25 @@ const PLANS = [
 
 export function Pricing() {
   return (
-    <section id="pricing" className="pb-28">
+    <section id="pricing" className="py-16 md:py-24">
       <div className={wrap}>
         <Reveal className="text-center">
           <Eyebrow>Pricing</Eyebrow>
           <H2>
             Per seat. <Em>Never per user.</Em>
           </H2>
-          <p className="mx-auto max-w-[56ch] text-[17px] text-muted">No MAU meter. Your bill does not grow because your product did.</p>
+          <Lede className="mx-auto">No MAU meter. Your bill does not grow because your product did.</Lede>
         </Reveal>
         <div className="mt-12 grid gap-4 md:grid-cols-3">
           {PLANS.map((p, i) => (
             <Reveal key={p.name} index={i}>
               <Card className={`flex h-full flex-col ${p.primary ? 'border-ink' : ''}`}>
                 <Tag tone={p.tone}>{p.name}</Tag>
-                <div className="mt-3.5 mb-0.5 font-serif text-[44px] leading-none tracking-[-0.03em] text-ink">
+                <div className="mt-4 mb-1 text-[44px] leading-none tracking-[-0.03em] text-ink">
                   {p.price}
-                  {p.unit ? <small className="font-sans text-[13px] tracking-normal text-muted">{p.unit}</small> : null}
+                  {p.unit ? <small className="text-[13px] tracking-normal text-muted">{p.unit}</small> : null}
                 </div>
-                <P>{p.blurb}</P>
+                <p className="mt-2 text-sm leading-[1.55] text-muted">{p.blurb}</p>
                 <ul className="my-[22px] mb-[26px] flex flex-col gap-[9px] text-sm text-ink-2">
                   {p.items.map((it) => (
                     <li key={it} className="flex items-start gap-2.5">
@@ -483,7 +457,7 @@ const FAQ = [
 
 export function Faq() {
   return (
-    <section id="faq" className="pb-28">
+    <section id="faq" className="py-16 md:py-24">
       <div className="mx-auto max-w-[880px] px-6">
         <Reveal>
           <Eyebrow>Questions</Eyebrow>
@@ -512,42 +486,42 @@ export function Faq() {
 
 export function Closing() {
   return (
-    <section className="pb-28">
-      <div className={wrap}>
+    <section className="py-24 md:py-36">
+      <div className={`${wrap} text-center`}>
         <Reveal>
-          <Card className="px-10 py-14 text-center">
-            <H2 className="mt-0">
-              First flag live in <Em>five minutes.</Em>
-            </H2>
-            <p className="mx-auto max-w-[56ch] text-[17px] text-muted">
-              Install the CLI, create a flag, add three lines to your app. No dashboard signup required to start.
-            </p>
-            <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <Button href="#try">Install the CLI</Button>
-              <Button href="/docs/quickstart" variant="ghost">
-                Read the quickstart
-              </Button>
-            </div>
-          </Card>
+          <h2 className="text-[clamp(44px,7vw,84px)] font-normal leading-[1.02] tracking-[-0.04em] text-ink text-balance">Ship your first flag today</h2>
+        </Reveal>
+        <Reveal index={1}>
+          <Lede className="mx-auto mt-6">Install the CLI, create a flag, add three lines to your app. Five minutes, no dashboard signup.</Lede>
+        </Reveal>
+        <Reveal index={2} className="mt-9 flex flex-wrap justify-center gap-3">
+          <Button href="#try" kbd="S">
+            Get started
+          </Button>
+          <Button href="/docs/quickstart/" variant="ghost" kbd="D">
+            Read the docs
+          </Button>
         </Reveal>
       </div>
     </section>
   );
 }
 
+const FOOT = [
+  ['Docs', '/docs/'],
+  ['GitHub', REPO],
+  ['npm', 'https://www.npmjs.com/package/@flagrship/cli'],
+  ['PyPI', 'https://pypi.org/project/flagrship-sdk/'],
+  ['nisarg@flagrship.dev', 'mailto:nisarg@flagrship.dev'],
+];
+
 export function Footer() {
   return (
     <footer className="border-t border-line py-10 text-[13px] text-muted">
       <div className={`${wrap} flex flex-wrap justify-between gap-5`}>
         <div>Flagrship · Ship without a release.</div>
-        <div className="flex gap-7">
-          {[
-            ['Docs', '/docs'],
-            ['GitHub', 'https://github.com/Nisarg0330/Flagrship'],
-            ['Status', '#'],
-            ['Privacy', '#'],
-            ['nisarg@flagrship.dev', 'mailto:nisarg@flagrship.dev'],
-          ].map(([l, href]) => (
+        <div className="flex flex-wrap gap-7">
+          {FOOT.map(([l, href]) => (
             <a key={l} href={href} className="hover:text-ink">
               {l}
             </a>

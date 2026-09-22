@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { Tag } from './ui';
+import Link from 'next/link';
+import { Icon, Tag, type IconName } from './ui';
 
 /* Prose primitives for the docs. Anchored headings, tables, callouts. */
 
@@ -12,7 +13,7 @@ const slug = (s: string) =>
 export function Title({ children, lede }: { children: string; lede?: ReactNode }) {
   return (
     <header className="mb-10 border-b border-line pb-8">
-      <h1 className="font-serif text-[clamp(34px,4.6vw,48px)] leading-[1.1] tracking-[-0.025em] text-ink text-balance">{children}</h1>
+      <h1 className="text-[clamp(32px,4vw,40px)] font-medium leading-[1.15] tracking-[-0.025em] text-ink text-balance">{children}</h1>
       {lede ? <p className="mt-4 max-w-[62ch] text-[17px] leading-[1.6] text-muted">{lede}</p> : null}
     </header>
   );
@@ -121,6 +122,21 @@ export function Step({ title, children }: { title: string; children: ReactNode }
     <div className="relative border-l border-line pb-8 pl-8 last:pb-0 [counter-increment:step] before:absolute before:-left-[13px] before:top-0 before:flex before:size-[26px] before:items-center before:justify-center before:rounded-full before:border before:border-line before:bg-surface before:font-mono before:text-[11px] before:text-muted before:content-[counter(step)]">
       <h3 className="mb-2 text-[16px] font-semibold text-ink">{title}</h3>
       {children}
+    </div>
+  );
+}
+
+/** Mintlify-style card grid for hub pages. */
+export function Cards({ items }: { items: Array<{ href: string; icon: IconName; title: string; body: string }> }) {
+  return (
+    <div className="my-8 grid gap-4 sm:grid-cols-2">
+      {items.map((c) => (
+        <Link key={c.href} href={c.href} className="group rounded-xl border border-line bg-surface p-5 no-underline transition-colors hover:border-line-2">
+          <Icon name={c.icon} className="size-5 text-ink" />
+          <div className="mt-4 text-[15px] font-semibold text-ink">{c.title}</div>
+          <div className="mt-1 text-[14px] leading-[1.55] text-muted">{c.body}</div>
+        </Link>
+      ))}
     </div>
   );
 }
