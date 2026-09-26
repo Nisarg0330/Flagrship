@@ -4,7 +4,7 @@
 # Runtime needs one environment variable: DATABASE_URL. PORT defaults to 3000.
 
 # ── build ────────────────────────────────────────────────────────────────────
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 
 # Prisma's query engine links against OpenSSL.
@@ -27,7 +27,7 @@ RUN npx --workspace=@flagrship/api prisma generate \
  && npx --workspace=@flagrship/api tsc
 
 # ── runtime ──────────────────────────────────────────────────────────────────
-FROM node:22-alpine
+FROM node:26-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 
