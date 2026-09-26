@@ -19,7 +19,7 @@
   "dependencies": {
     "@fastify/cors": "^10.0.0",
     "@fastify/rate-limit": "^11.2.0",
-    "@prisma/client": "^6.0.0",
+    "@prisma/client": "^7.10.0",
     "fastify": "^5.0.0",
     "ioredis": "^5.4.0",
     "murmurhash-js": "^1.0.0",
