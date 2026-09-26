@@ -21,7 +21,7 @@
     "@fastify/rate-limit": "^11.2.0",
     "@prisma/client": "^6.0.0",
     "fastify": "^5.0.0",
-    "ioredis": "^5.4.0",
+    "ioredis": "^6.0.0",
     "murmurhash-js": "^1.0.0",
     "pino": "^9.0.0",
     "zod": "^3.23.0"
