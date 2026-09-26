@@ -12,6 +12,7 @@ import type { FastifyInstance } from 'fastify';
 import { buildServer } from '../../api/src/server';
 import { prisma } from '../../api/src/lib/db';
 import { generateApiKey } from '../../api/src/middleware/auth';
+import { assertSafeApiUrl } from '../src/config';
 
 const execFileAsync = promisify(execFile);
 const BIN = join(__dirname, '..', 'dist', 'flagrship.js');
@@ -67,7 +68,7 @@ beforeAll(async () => {
     ],
   });
 
-  app = buildServer();
+  app = await buildServer();
   await app.listen({ port: 0, host: '127.0.0.1' });
   const address = app.server.address();
   if (!address || typeof address === 'string') throw new Error('no port');
@@ -216,5 +217,122 @@ describe('config discovery', () => {
     const r = await cli('list');
     expect(r.code).toBe(1);
     expect(r.stderr).toMatch(/is not valid JSON/);
+  });
+});
+
+/* ── security review fixes ─────────────────────────────────────────────────── */
+
+/** Like `cli()`, but with a controlled environment and optional stdin. */
+async function cliWith(
+  opts: { env?: NodeJS.ProcessEnv; input?: string },
+  ...args: string[]
+): Promise<Result> {
+  const child = execFile(
+    'node',
+    [BIN, ...args],
+    { cwd: workdir, env: { ...process.env, NO_COLOR: '1', ...opts.env } },
+    () => {},
+  );
+  if (opts.input !== undefined) child.stdin?.end(opts.input);
+  return new Promise((resolve) => {
+    let stdout = '';
+    let stderr = '';
+    child.stdout?.on('data', (d) => (stdout += d));
+    child.stderr?.on('data', (d) => (stderr += d));
+    child.on('close', (code) => resolve({ code: code ?? 0, stdout, stderr }));
+  });
+}
+
+describe('init refuses to hand the key to the wrong place', () => {
+  it('rejects a host that is not Flagrship', async () => {
+    const r = await cli('init', '--key', stagingKey, '--api-url', 'https://attacker.example');
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/not a Flagrship host/);
+    // The refusal happens before the request, so nothing was ever sent.
+    expect(r.stderr).toMatch(/--allow-custom-host/);
+  });
+
+  it('rejects plain http to a host that is not loopback', async () => {
+    const r = await cli('init', '--key', stagingKey, '--api-url', 'http://api.flagrship.dev');
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/plain http/);
+  });
+
+  // The rest is the guard itself, called directly: going through the binary
+  // would mean a real request to whatever host the case names, and one of them
+  // is production.
+  it('passes the official host, its subdomains, and loopback', () => {
+    for (const url of [
+      'https://api.flagrship.dev',
+      'https://flagrship.dev',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      'http://api.localhost:3000',
+    ]) {
+      expect(() => assertSafeApiUrl(url), url).not.toThrow();
+    }
+  });
+
+  it('lets a self-hoster through with the explicit flag', () => {
+    expect(() => assertSafeApiUrl('https://flags.mycorp.internal')).toThrow(/not a Flagrship host/);
+    expect(() => assertSafeApiUrl('https://flags.mycorp.internal', true)).not.toThrow();
+  });
+
+  it('is not fooled by a lookalike host', () => {
+    for (const url of [
+      'https://flagrship.dev.attacker.example',
+      'https://notflagrship.dev',
+      'https://flagrship.dev@attacker.example',
+    ]) {
+      expect(() => assertSafeApiUrl(url), url).toThrow();
+    }
+  });
+
+  it('rejects a url it cannot parse or a scheme it does not speak', () => {
+    expect(() => assertSafeApiUrl('not a url')).toThrow(/not a valid URL/);
+    expect(() => assertSafeApiUrl('file:///etc/passwd')).toThrow(/http or https/);
+  });
+});
+
+describe('init keeps the key out of argv', () => {
+  // The config-discovery block above leaves a deliberately corrupt file behind.
+  beforeAll(() => rmSync(join(workdir, '.flagrship.json'), { force: true }));
+
+  it('reads FLAGRSHIP_API_KEY when --key is absent', async () => {
+    const r = await cliWith(
+      { env: { FLAGRSHIP_API_KEY: stagingKey } },
+      'init',
+      '--api-url',
+      apiUrl,
+    );
+    expect(r.code, r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/Saved staging key/);
+  });
+
+  it('reads stdin with --key -', async () => {
+    const r = await cliWith({ input: `${stagingKey}\n` }, 'init', '--key', '-', '--api-url', apiUrl);
+    expect(r.code, r.stderr).toBe(0);
+    expect(r.stdout).toMatch(/Saved staging key/);
+  });
+
+  it('says what to do when there is no key anywhere', async () => {
+    const r = await cliWith({ env: { FLAGRSHIP_API_KEY: '' } }, 'init', '--api-url', apiUrl);
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(/FLAGRSHIP_API_KEY/);
+  });
+});
+
+describe('the config file is treated as a secret', () => {
+  it('is owner-only', async () => {
+    await cli('init', '--key', stagingKey, '--api-url', apiUrl);
+    const mode = require('node:fs').statSync(join(workdir, '.flagrship.json')).mode & 0o777;
+    // Windows does not implement POSIX modes; the call is a no-op there.
+    if (process.platform !== 'win32') expect(mode).toBe(0o600);
+  });
+
+  it('never prints the key, even with --verbose', async () => {
+    const r = await cli('--verbose', 'list');
+    expect(r.code, r.stderr).toBe(0);
+    expect(`${r.stdout}${r.stderr}`).not.toContain(stagingKey);
   });
 });

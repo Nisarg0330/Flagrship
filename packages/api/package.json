@@ -17,19 +17,20 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "fastify": "^5.0.0",
     "@fastify/cors": "^10.0.0",
+    "@fastify/rate-limit": "^11.2.0",
     "@prisma/client": "^6.0.0",
-    "zod": "^3.23.0",
+    "fastify": "^5.0.0",
     "ioredis": "^5.4.0",
+    "murmurhash-js": "^1.0.0",
     "pino": "^9.0.0",
-    "murmurhash-js": "^1.0.0"
+    "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "prisma": "^6.0.0",
-    "typescript": "^5.5.0",
     "tsx": "^4.0.0",
-    "vitest": "^2.0.0",
-    "@types/node": "^22.0.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
   }
 }

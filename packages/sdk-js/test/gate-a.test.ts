@@ -48,7 +48,7 @@ beforeAll(async () => {
     ],
   });
 
-  app = buildServer();
+  app = await buildServer();
   await app.listen({ port: 0, host: '127.0.0.1' });
   const address = app.server.address();
   if (!address || typeof address === 'string') throw new Error('no port');

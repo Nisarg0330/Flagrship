@@ -5,6 +5,7 @@ import {
   CONFIG_FILE,
   CliError,
   DEFAULT_API_URL,
+  assertSafeApiUrl,
   ensureGitignored,
   findConfigPath,
   loadConfig,
@@ -63,18 +64,49 @@ function showFlag(s: Session, flag: FlagView, verb?: string): void {
 
 // ── init ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Reads the key without putting it in argv where possible. A key passed as
+ * `--key sk_live_…` is visible to every other process via `ps` and lands in
+ * shell history; `FLAGRSHIP_API_KEY` and `--key -` avoid both.
+ */
+async function readKey(flag: string | undefined): Promise<string> {
+  if (flag === '-') {
+    const chunks: Buffer[] = [];
+    for await (const chunk of process.stdin) chunks.push(chunk as Buffer);
+    const piped = Buffer.concat(chunks).toString('utf8').trim();
+    if (!piped) throw new CliError('No API key on stdin.');
+    return piped;
+  }
+  const key = flag ?? process.env.FLAGRSHIP_API_KEY;
+  if (!key) {
+    throw new CliError(
+      'No API key. Pass --key <api-key>, set FLAGRSHIP_API_KEY, or pipe it in with --key -',
+    );
+  }
+  return key.trim();
+}
+
 program
   .command('init')
   .description(`store an API key in ${CONFIG_FILE} (one key per environment)`)
-  .requiredOption('-k, --key <api-key>', 'API key from the dashboard or `flagrship keys create`')
+  .option(
+    '-k, --key <api-key>',
+    'API key; "-" reads stdin. Defaults to $FLAGRSHIP_API_KEY, which keeps it out of shell history',
+  )
   .option('--api-url <url>', 'API base URL', DEFAULT_API_URL)
+  .option('--allow-custom-host', 'send the key to a host that is not flagrship.dev (self-hosting)')
   .option('--default', 'make this key\'s environment the default')
-  .action(async (opts: { key: string; apiUrl: string; default?: boolean }, cmd: Command) => {
+  .action(async (opts: { key?: string; apiUrl: string; allowCustomHost?: boolean; default?: boolean }, cmd: Command) => {
     const { verbose, json } = cmd.optsWithGlobals<GlobalOpts>();
+
+    // Both of these run before the key leaves this machine. A warning printed
+    // afterwards is just a receipt.
+    assertSafeApiUrl(opts.apiUrl, opts.allowCustomHost);
+    const apiKey = await readKey(opts.key);
 
     // Verify the key before writing anything, and learn which environment it
     // belongs to from the API rather than asking the user.
-    const probe = createClient(opts.apiUrl, opts.key, verbose);
+    const probe = createClient(opts.apiUrl, apiKey, verbose);
     const { environment } = await probe.get<{ environment: string }>('/flags');
 
     const existingPath = findConfigPath();
@@ -84,7 +116,7 @@ program
       : { apiUrl: opts.apiUrl, defaultEnvironment: environment, keys: {} };
 
     config.apiUrl = opts.apiUrl;
-    config.keys[environment] = opts.key;
+    config.keys[environment] = apiKey;
     if (opts.default || !config.defaultEnvironment) config.defaultEnvironment = environment;
 
     saveConfig(path, config);

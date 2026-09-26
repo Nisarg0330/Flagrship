@@ -25,5 +25,13 @@ services:
         value: "3000"
       - key: HOST
         value: 0.0.0.0
+      # Render terminates TLS at its proxy, so without this every request looks
+      # like it comes from that proxy and the per-IP rate limit would put all
+      # customers in one bucket. Only safe because Render sets X-Forwarded-For
+      # itself and strips what the client sent.
+      - key: TRUST_PROXY
+        value: "true"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "600"
       - key: DATABASE_URL
         sync: false           # prompted at blueprint creation; never committed

@@ -65,7 +65,8 @@ export default function Api() {
           ['403', 'FORBIDDEN', 'The key lacks the scope this endpoint needs.'],
           ['404', 'NOT_FOUND', 'No such flag, key, or environment in this organization.'],
           ['409', 'CONFLICT', 'Duplicate flag key, locked flag, nothing to roll back, already revoked.'],
-          ['500', 'INTERNAL_ERROR', 'Our fault. The request ID is in the body.'],
+          ['429', 'RATE_LIMITED', 'Too many requests from your IP. The message says how long to wait.'],
+          ['500', 'INTERNAL_ERROR', 'Our fault, and the message says nothing else. The request ID is in the body.'],
         ]}
       />
       <Note tone="sky" title="Empty bodies are fine">
@@ -188,21 +189,25 @@ cache-control: private, no-cache`}
       <Method verb="POST" path="/keys" scope="admin" />
       <CodeBlock lang="json" numbers={false} code={`{
   "name": "CI reader",
-  "environment": "production",
   "scopes": ["read"]
 }`} />
       <P>
-        <Code>environment</Code> defaults to the calling key&apos;s. Scopes are hierarchical: <Code>admin</Code> implies{' '}
+        The new key lands in the calling key&apos;s environment. There is no way to name a different one: a staging admin
+        key must not be a way to mint a production key. Scopes are hierarchical: <Code>admin</Code> implies{' '}
         <Code>write</Code> implies <Code>read</Code>. The response includes the raw key <strong>once</strong>; only its
         SHA-256 hash is stored.
       </P>
+      <Note tone="sand" title="A new environment's first key">
+        Bootstrapping an environment that has no key yet is a server-side operation, not an API call. Ask us and we run it
+        against the database directly.
+      </Note>
       <CodeBlock
         lang="json"
         title="response"
         code={`{
   "id": "b4dd593e-efdc-4553-aecf-c3b0edb21ff2",
   "name": "CI reader",
-  "environment": "production",
+  "environment": "staging",
   "scopes": ["read"],
   "keyPrefix": "sk_read_your",
   "createdAt": "2026-09-15T22:20:46.831Z",
@@ -215,6 +220,17 @@ cache-control: private, no-cache`}
 
       <Method verb="DELETE" path="/keys/:id" scope="admin" />
       <P>Revoke. The key stops authenticating immediately. It is not deleted; revoked keys are evidence. 409 if already revoked.</P>
+
+      <H2>Rate limits</H2>
+      <P>
+        600 requests per minute per IP address, across every endpoint including <Code>/health</Code>. Going over returns{' '}
+        <Code>429</Code> with <Code>RATE_LIMITED</Code> and a wait time. An SDK polls twice a minute and a CLI command is
+        one call, so this only bites abuse.
+      </P>
+      <P>
+        The limit is not what protects a key from being guessed - a key is 24 random bytes, so guessing is not a threat a
+        rate limit meaningfully changes. It is there so one noisy client cannot take the API away from everyone else.
+      </P>
 
       <H2>Health</H2>
       <Method verb="GET" path="/health" scope="none" />

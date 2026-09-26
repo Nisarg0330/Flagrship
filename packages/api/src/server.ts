@@ -1,14 +1,30 @@
 import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyError, type FastifyInstance } from 'fastify';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
 import { prisma } from './lib/db';
-import { ApiError } from './lib/errors';
+import { ApiError, tooManyRequests } from './lib/errors';
 import { authenticate } from './middleware/auth';
 import { evaluateRoutes } from './routes/evaluate';
 import { flagRoutes } from './routes/flags';
 import { keyRoutes } from './routes/keys';
 
-export function buildServer(): FastifyInstance {
+/**
+ * Requests per minute per client IP. Generous: an SDK polls twice a minute and a
+ * CLI command is one call, so this only bites abuse. It is not the defence
+ * against key guessing - a key is 192 bits from randomBytes, so guessing is not
+ * a threat any rate limit meaningfully changes. This limit exists to keep one
+ * noisy or hostile client from consuming the instance.
+ */
+const rateLimitPerMinute = () => Number(process.env.RATE_LIMIT_PER_MINUTE ?? 600);
+
+/**
+ * Async because plugins must finish registering before any route is declared:
+ * a Fastify hook only applies to routes added after it, and a non-awaited
+ * `register` is deferred until `ready()` - by which point every route already
+ * exists and the hook silently applies to nothing.
+ */
+export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
     // Pino ships inside Fastify - there is no separate logger to configure.
     logger: process.env.NODE_ENV === 'test' ? false : true,
@@ -16,6 +32,11 @@ export function buildServer(): FastifyInstance {
     // can quote it. Fastify's default is a per-process counter, which collides
     // across instances.
     genReqId: () => randomUUID(),
+    // Behind Render's proxy (and an ALB later) every socket comes from the proxy,
+    // so without this `req.ip` is one shared value and the rate limit below would
+    // bucket every customer together. Off by default: trusting X-Forwarded-For
+    // when nothing strips it lets a client spoof its own IP.
+    trustProxy: process.env.TRUST_PROXY === 'true',
   });
 
   app.setErrorHandler((err: FastifyError, req, reply) => {
@@ -70,7 +91,39 @@ export function buildServer(): FastifyInstance {
     }
   });
 
-  app.register(cors, { origin: false });
+  await app.register(cors, { origin: false });
+
+  // In-memory store, which is per-instance. Correct while there is one instance;
+  // ponytail: move to the Redis store when there are two, or a client gets N
+  // times the limit.
+  await app.register(rateLimit, {
+    global: false,
+    max: rateLimitPerMinute(),
+    timeWindow: '1 minute',
+    // Never key on the API key itself: an attacker rotating keys would get a
+    // fresh bucket per guess. The IP is the thing that cannot be rotated for free.
+    keyGenerator: (req) => req.ip,
+    // The plugin *throws* what this returns, so it has to be something the
+    // error handler above understands - a bare object arrives with no status
+    // and becomes a 500.
+    errorResponseBuilder: (_req, ctx) =>
+      tooManyRequests(`Too many requests. Try again in ${Math.ceil(ctx.ttl / 1000)}s.`),
+  });
+
+  // Applied as a root-level onRequest hook rather than `global: true`, which
+  // attaches per route and therefore runs *after* the /api/v1 scope's own
+  // `authenticate` hook - an unauthenticated flood would do a database lookup
+  // per request before being turned away. Root hooks run first, so this rejects
+  // the flood before it reaches the database.
+  app.addHook('onRequest', app.rateLimit());
+
+  // Nothing here is meant to be rendered by a browser or cached by anything in
+  // between. Cheap to send, and it is what an enterprise review asks for.
+  app.addHook('onSend', async (_req, reply) => {
+    reply.header('x-content-type-options', 'nosniff');
+    reply.header('x-frame-options', 'DENY');
+    reply.header('referrer-policy', 'no-referrer');
+  });
 
   // Public: the load balancer health check cannot carry an API key.
   app.get('/health', async () => {
@@ -97,7 +150,7 @@ export function buildServer(): FastifyInstance {
 }
 
 async function start() {
-  const app = buildServer();
+  const app = await buildServer();
   const port = Number(process.env.PORT ?? 3000);
   const host = process.env.HOST ?? '0.0.0.0';
 

