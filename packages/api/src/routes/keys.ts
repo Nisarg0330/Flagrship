@@ -6,8 +6,6 @@ import { generateApiKey, normalizeScopes, requireScope } from '../middleware/aut
 
 const createKeyBody = z.object({
   name: z.string().trim().min(1, 'A key name is required.').max(100),
-  /** Defaults to the environment the calling key is scoped to. */
-  environment: z.string().trim().min(1).max(40).optional(),
   scopes: z
     .array(z.enum(['read', 'write', 'admin']))
     .min(1, 'At least one scope is required.')
@@ -32,13 +30,13 @@ export async function keyRoutes(app: FastifyInstance) {
     const body = parse(createKeyBody, req.body);
     const { orgId, envId, actorId } = req.auth;
 
-    const env = body.environment
-      ? await prisma.environment.findUnique({
-          where: { orgId_slug: { orgId, slug: body.environment } },
-        })
-      : await prisma.environment.findUnique({ where: { id: envId } });
-
-    if (!env) throw notFound(`Environment "${body.environment}" does not exist.`);
+    // A new key always lands in the calling key's own environment. Letting an
+    // admin key name a different one made a staging key a way to mint a
+    // production key, which is exactly the boundary the rest of the API keeps:
+    // the key *is* the environment. Provisioning a brand new environment's first
+    // key is a server-side operation (prisma/org.ts), not an API call.
+    const env = await prisma.environment.findUnique({ where: { id: envId } });
+    if (!env) throw notFound('The environment this key belongs to no longer exists.');
 
     const scopes = normalizeScopes(body.scopes ?? ['read']);
     const { raw, keyPrefix, keyHash } = generateApiKey(prefixFor(scopes, env.slug));

@@ -34,16 +34,39 @@ export default function Cli() {
         Store an API key. The CLI calls the API to verify the key and learn which environment it belongs to, then writes
         the config file and adds it to <Code>.gitignore</Code>. Run it once per environment.
       </P>
-      <CodeBlock lang="shell" numbers={false} code={`$ flagrship init --key <api-key> [--api-url <url>] [--default]`} />
+      <CodeBlock
+        lang="shell"
+        numbers={false}
+        code={`$ flagrship init --key <api-key>
+
+# or keep the key out of your shell history
+$ export FLAGRSHIP_API_KEY=sk_test_...
+$ flagrship init
+$ cat key.txt | flagrship init --key -`}
+      />
       <Table
         head={['Option', 'What it does']}
         mono={[0]}
         rows={[
-          ['-k, --key <api-key>', 'Required. The key to store.'],
+          [
+            '-k, --key <api-key>',
+            <>
+              The key to store. <Code>-</Code> reads it from stdin. Falls back to <Code>$FLAGRSHIP_API_KEY</Code>. A key
+              passed on the command line is visible to other processes via <Code>ps</Code> and lands in your shell
+              history, so prefer the other two.
+            </>,
+          ],
           ['--api-url <url>', <>API base URL. Default <Code>https://api.flagrship.dev</Code>. Use <Code>http://127.0.0.1:3000</Code> against a local API.</>],
+          ['--allow-custom-host', 'Required to send the key to a host that is not flagrship.dev or a local address.'],
           ['--default', "Make this key's environment the default. The first key stored is the default automatically."],
         ]}
       />
+      <Note tone="rose" title="If someone hands you an init command, read the --api-url">
+        <Code>init</Code> sends your key to whatever host <Code>--api-url</Code> names, which makes it a one-line way to
+        steal a key. The CLI refuses any host that is not <Code>flagrship.dev</Code> or a loopback address, and refuses
+        plain <Code>http</Code> to anything remote, before the key leaves your machine. <Code>--allow-custom-host</Code>
+        overrides that and exists for self-hosting. If a command you were sent includes it, do not run it.
+      </Note>
 
       <H3>create</H3>
       <CodeBlock lang="shell" numbers={false} code={`$ flagrship create <key> [--name <name>] [--description <text>]`} />
@@ -119,9 +142,15 @@ new-checkout  ON   25%   New Checkout  12s ago`}
 }`}
       />
       <Note tone="rose" title="This file contains secrets">
-        <Code>init</Code> adds it to <Code>.gitignore</Code> automatically. If you copy the file somewhere, treat it like a
-        password.
+        <Code>init</Code> adds it to <Code>.gitignore</Code> automatically and writes the file <Code>0600</Code>, so only
+        your user account can read it. Keys are stored in plain text, which is what <Code>npm</Code> and <Code>gh</Code>
+        do; it protects against a committed key and a nosy account on a shared machine, not against malware already
+        running as you. If you copy the file somewhere, treat it like a password.
       </Note>
+      <P>
+        On Windows the mode is a no-op and the file inherits the directory&apos;s permissions. Keys are revocable: if one
+        may have leaked, run <Code>flagrship keys revoke</Code> and issue a new one rather than hunting for copies.
+      </P>
 
       <H2>Errors and exit codes</H2>
       <P>
@@ -137,7 +166,12 @@ error: Flag "new-checkout" is locked: CVE-2026-1234. An admin must unlock it fir
       />
       <P>
         Network failures and 5xx responses are retried three times with backoff (1s, 2s, 4s). 4xx responses are never
-        retried: the request itself is wrong, and three more copies of it will not help.
+        retried: the request itself is wrong, and three more copies of it will not help. A <Code>429</Code> is a 4xx and
+        is not retried either - the message says how long to wait.
+      </P>
+      <P>
+        <Code>--verbose</Code> prints the method, URL, and response status to stderr. It never prints the API key, the
+        authorization header, or a request body.
       </P>
     </>
   );

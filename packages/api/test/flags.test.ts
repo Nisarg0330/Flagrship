@@ -65,7 +65,7 @@ beforeAll(async () => {
     ],
   });
 
-  app = buildServer();
+  app = await buildServer();
   await app.ready();
 });
 

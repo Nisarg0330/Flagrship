@@ -1,0 +1,33 @@
+# Keeps dependencies current without a CI gate that cries wolf. A blocking
+# `npm audit` step would fail today on advisories that live entirely in build
+# and test tooling (vitest, the esbuild dev server, the Prisma CLI's config
+# parser) and cannot be fixed without a breaking major, so people would learn
+# to ignore it. Dependabot opens a PR instead, which runs the full suite.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # One PR for the noisy, low-risk stuff; anything else comes on its own so
+      # a runtime dependency bump gets read rather than skimmed.
+      dev-tooling:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: /packages/sdk-python
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /packages/api
+    schedule:
+      interval: weekly

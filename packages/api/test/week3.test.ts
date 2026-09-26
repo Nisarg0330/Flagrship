@@ -66,7 +66,7 @@ beforeAll(async () => {
     ],
   });
 
-  app = buildServer();
+  app = await buildServer();
   await app.ready();
 
   await post('/flags', writeKey, { key: FLAG, name: 'Checkout v2' });

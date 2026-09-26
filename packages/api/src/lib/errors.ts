@@ -24,6 +24,7 @@ export const unauthorized = (message: string) => new ApiError(401, 'UNAUTHORIZED
 export const forbidden = (message: string) => new ApiError(403, 'FORBIDDEN', message);
 export const notFound = (message: string) => new ApiError(404, 'NOT_FOUND', message);
 export const conflict = (message: string) => new ApiError(409, 'CONFLICT', message);
+export const tooManyRequests = (message: string) => new ApiError(429, 'RATE_LIMITED', message);
 
 /**
  * Zod's own error shape is not the API's error shape. Parse through here so the
