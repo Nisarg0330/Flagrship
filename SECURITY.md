@@ -94,10 +94,18 @@ trigger is the second instance.
 
 ## Transport and headers
 
-TLS terminates at the platform edge (Render today, an ALB later);
-`TRUST_PROXY` is set there so per-IP limiting sees the real client rather than
-the proxy. It is off by default, because trusting `X-Forwarded-For` when
-nothing strips it lets a client claim any IP it likes.
+TLS terminates at the platform edge (Render today, an ALB later).
+`TRUST_PROXY` is the **number of proxy hops**, not a boolean, so per-IP
+limiting sees the real client rather than the proxy. It defaults to 0, meaning
+no proxy is trusted and only the socket address counts.
+
+This distinction is the whole thing: Render appends to `X-Forwarded-For`
+instead of replacing it, so "trust every hop" would make the app read the
+left-most entry — whatever the client wrote — and the rate limit could be
+bypassed by rotating one header. A hop count makes the app walk in from the
+socket and stop at the address the proxy observed, which a client cannot forge.
+Regression tests in `packages/api/test/security.test.ts` assert that rotating a
+spoofed `X-Forwarded-For` does not buy a fresh allowance.
 
 Responses carry `x-content-type-options: nosniff`, `x-frame-options: DENY`, and
 `referrer-policy: no-referrer`. CORS is disabled: this is a server-to-server

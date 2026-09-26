@@ -25,12 +25,14 @@ services:
         value: "3000"
       - key: HOST
         value: 0.0.0.0
-      # Render terminates TLS at its proxy, so without this every request looks
-      # like it comes from that proxy and the per-IP rate limit would put all
-      # customers in one bucket. Only safe because Render sets X-Forwarded-For
-      # itself and strips what the client sent.
+      # Number of proxy hops in front of the app, NOT a boolean. Render puts one
+      # proxy in front and *appends* to X-Forwarded-For rather than replacing
+      # it, so "true" (trust every hop) would make the app read the left-most
+      # entry - the one the client wrote - and the per-IP rate limit could be
+      # bypassed by rotating a single header. A hop count makes the app use the
+      # address Render itself observed.
       - key: TRUST_PROXY
-        value: "true"
+        value: "1"
       - key: RATE_LIMIT_PER_MINUTE
         value: "600"
       - key: DATABASE_URL

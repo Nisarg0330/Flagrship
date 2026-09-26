@@ -104,6 +104,57 @@ describe('response headers', () => {
   });
 });
 
+describe('a client cannot pick its own rate limit bucket', () => {
+  // Render appends to X-Forwarded-For rather than replacing it, so the header
+  // arrives as "<whatever the client sent>, <real client>". Trusting every hop
+  // made Fastify read the left-most entry, and rotating one header gave an
+  // attacker a fresh bucket per request. TRUST_PROXY is a hop count so the
+  // address the proxy observed is the one that counts.
+  const REAL = '198.51.100.7';
+  let proxied: FastifyInstance;
+
+  beforeAll(async () => {
+    const previousTrust = process.env.TRUST_PROXY;
+    const previousLimit = process.env.RATE_LIMIT_PER_MINUTE;
+    process.env.TRUST_PROXY = '1';
+    process.env.RATE_LIMIT_PER_MINUTE = String(LIMIT);
+    proxied = await buildServer();
+    await proxied.ready();
+    if (previousTrust === undefined) delete process.env.TRUST_PROXY;
+    else process.env.TRUST_PROXY = previousTrust;
+    if (previousLimit === undefined) delete process.env.RATE_LIMIT_PER_MINUTE;
+    else process.env.RATE_LIMIT_PER_MINUTE = previousLimit;
+  });
+
+  afterAll(async () => {
+    await proxied.close();
+  });
+
+  const remainingFor = async (forwardedFor: string) => {
+    const res = await proxied.inject({
+      method: 'GET',
+      url: '/health',
+      headers: { 'x-forwarded-for': forwardedFor },
+    });
+    return Number(res.headers['x-ratelimit-remaining']);
+  };
+
+  it('spends one bucket however the client spoofs the header', async () => {
+    const first = await remainingFor(`203.0.113.1, ${REAL}`);
+    const second = await remainingFor(`203.0.113.2, ${REAL}`);
+    const third = await remainingFor(`203.0.113.3, ${REAL}`);
+
+    // Rotating the spoofed entry must not buy a fresh allowance.
+    expect(second).toBe(first - 1);
+    expect(third).toBe(first - 2);
+  });
+
+  it('still separates two genuinely different clients', async () => {
+    const other = await remainingFor('203.0.113.1, 198.51.100.8');
+    expect(other).toBe(LIMIT - 1);
+  });
+});
+
 describe('rate limiting', () => {
   it('answers 429 once a client passes the limit, authenticated or not', async () => {
     // Unauthenticated, so this also proves the limiter runs before the database

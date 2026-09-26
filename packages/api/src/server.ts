@@ -19,6 +19,35 @@ import { keyRoutes } from './routes/keys';
 const rateLimitPerMinute = () => Number(process.env.RATE_LIMIT_PER_MINUTE ?? 600);
 
 /**
+ * How many proxy hops in front of this process, as a count - never `true`.
+ *
+ * Behind Render's proxy (and an ALB later) every socket comes from the proxy,
+ * so with no setting at all `req.ip` is one shared value and the per-IP rate
+ * limit buckets every customer together.
+ *
+ * But `true` means "trust every hop", which makes Fastify take the *left-most*
+ * X-Forwarded-For entry - and Render appends to that header rather than
+ * replacing it, so the left-most entry is whatever the client sent. That made
+ * the rate limit bypassable by rotating one header. A count makes Fastify walk
+ * in from the socket instead and land on the address the proxy itself observed,
+ * which a client cannot forge.
+ *
+ * 0 (the default) means no proxy: trust the socket and ignore the header.
+ *
+ * Expressed as the predicate form rather than a bare count because Fastify's
+ * types do not accept a number here, and a number that Fastify does not
+ * understand silently falls back to trusting nothing - which looks identical
+ * to working until you check which address was actually used.
+ */
+function trustProxy(): (address: string, hop: number) => boolean {
+  const raw = Number(process.env.TRUST_PROXY ?? 0);
+  const hops = Number.isInteger(raw) && raw >= 0 ? raw : 0;
+  // `hop` counts inward from the socket, so this trusts exactly the first
+  // `hops` addresses and stops at the first one a client could have written.
+  return (_address, hop) => hop < hops;
+}
+
+/**
  * Async because plugins must finish registering before any route is declared:
  * a Fastify hook only applies to routes added after it, and a non-awaited
  * `register` is deferred until `ready()` - by which point every route already
@@ -32,11 +61,7 @@ export async function buildServer(): Promise<FastifyInstance> {
     // can quote it. Fastify's default is a per-process counter, which collides
     // across instances.
     genReqId: () => randomUUID(),
-    // Behind Render's proxy (and an ALB later) every socket comes from the proxy,
-    // so without this `req.ip` is one shared value and the rate limit below would
-    // bucket every customer together. Off by default: trusting X-Forwarded-For
-    // when nothing strips it lets a client spoof its own IP.
-    trustProxy: process.env.TRUST_PROXY === 'true',
+    trustProxy: trustProxy(),
   });
 
   app.setErrorHandler((err: FastifyError, req, reply) => {
